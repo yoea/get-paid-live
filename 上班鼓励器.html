@@ -79,10 +79,13 @@ body{
   padding:18px 14px calc(24px + env(safe-area-inset-bottom));
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
+  /* 整页纵向排布：内容区吃掉多余高度，页脚贴底，窗口拉高时不再留一大片空 */
+  display:flex;
+  flex-direction:column;
 }
 .num, .hero-money, .v, .clock, .duo .v, .prog-head .p, .day{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
-.app{max-width:1080px;margin:0 auto}
+.app{max-width:1080px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column}
 
 /* ---------- 顶栏 ---------- */
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
@@ -114,12 +117,16 @@ body{
 .icon-btn svg{width:16px;height:16px}
 
 /* ---------- 栅格 ---------- */
-.grid{display:grid;gap:13px;grid-template-columns:1fr}
+.grid{display:grid;gap:13px;grid-template-columns:1fr;flex:1;align-content:start}
 .col-a,.col-b{display:flex;flex-direction:column;gap:13px;min-width:0}
 @media(min-width:900px){
   .grid{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:15px;align-items:stretch}
   .col-a,.col-b{gap:15px}
   .hero{flex:1;display:flex;flex-direction:column;justify-content:center}
+  /* 日历那栏也要吃掉纵向余量，否则窗口拉高后空白全堆在它下面 */
+  .col-b{justify-content:space-between}
+  .col-b .card{flex:1;display:flex;flex-direction:column}
+  .col-b .card .days{flex:1;grid-auto-rows:minmax(34px,1fr)}
 }
 
 /* ---------- 卡片 ---------- */
@@ -139,10 +146,15 @@ body{
   background:radial-gradient(560px 190px at 0% -10%,rgba(255,200,87,.11),transparent 66%);
 }
 .hero>*{position:relative}
-.hero-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.date{font-size:12.5px;color:var(--dim);letter-spacing:.01em}
-.clock{font-size:12.5px;color:var(--text);opacity:.86;letter-spacing:.02em}
-.money-line{display:flex;align-items:flex-start;gap:7px;margin:15px 0 8px}
+.hero-top{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding-bottom:11px;border-bottom:1px solid var(--line-soft);
+}
+.hero-top .when{display:flex;align-items:baseline;gap:8px;min-width:0;white-space:nowrap}
+.hero-top .wd{font-size:14px;font-weight:700;color:var(--text);letter-spacing:.01em}
+.hero-top .date{font-size:12px;color:var(--faint);letter-spacing:.01em}
+.clock{font-size:14px;font-weight:600;color:var(--text);opacity:.9;letter-spacing:.02em;white-space:nowrap}
+.money-line{display:flex;align-items:flex-start;gap:7px;margin:16px 0 8px}
 .cur{font-size:clamp(19px,5vw,26px);color:var(--gold);opacity:.9;font-weight:600;transform:translateY(.16em);transition:.2s}
 .hero-money{
   font-size:clamp(40px,12.6vw,62px);
@@ -187,6 +199,8 @@ body{
 .duo>div{background:var(--w2b);border:1px solid var(--line-soft);border-radius:12px;padding:9px 11px;min-width:0}
 .duo .k{font-size:11px;color:var(--faint);letter-spacing:.05em}
 .duo .v{font-size:clamp(14px,3.9vw,18px);font-weight:650;margin-top:3px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:clip}
+/* 上/下班时间：跟在两个大数下面的一行小字 */
+.duo .s{font-size:10.5px;color:var(--faint);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- 进度 ---------- */
 .prog-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
@@ -212,19 +226,39 @@ body{
 .stat.s-full .v{color:var(--text)}
 
 /* ---------- 日历 ---------- */
-.cal-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:11px}
-.cal-title{font-size:12.5px;color:var(--dim);letter-spacing:.04em}
-.cal-num{font-size:12px;color:var(--faint)}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.cal-left{display:flex;align-items:center;gap:6px;min-width:0}
+.cal-nav{
+  width:24px;height:24px;display:grid;place-items:center;padding:0;flex:0 0 auto;
+  border-radius:8px;border:1px solid var(--line);background:var(--w2);color:var(--dim);
+  font-family:inherit;font-size:13px;line-height:1;cursor:pointer;transition:.15s;
+}
+.cal-nav:hover{color:var(--text);border-color:var(--line-hover);background:var(--w3)}
+.cal-nav:active{transform:scale(.94)}
+.cal-title{font-size:12.5px;color:var(--dim);letter-spacing:.04em;white-space:nowrap;min-width:66px;text-align:center}
+.cal-title b{color:var(--text);font-weight:650}
+.cal-back{
+  border:none;background:none;color:var(--gold);font-family:inherit;font-size:11px;
+  cursor:pointer;padding:2px 0;text-decoration:underline;text-underline-offset:2px;
+}
+.cal-num{font-size:12px;color:var(--faint);white-space:nowrap}
 .cal-num b{color:var(--text);font-weight:650;font-size:13px}
 .week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px}
 .week span{text-align:center;font-size:10.5px;color:var(--faint);letter-spacing:.04em}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .day{
-  height:34px;display:flex;align-items:center;justify-content:center;
+  position:relative;min-height:34px;height:auto;display:flex;align-items:center;justify-content:center;
   border-radius:9px;font-size:12px;border:1px solid transparent;color:var(--faint);
-  background:var(--w1);
+  background:var(--w1);cursor:pointer;user-select:none;transition:border-color .15s,transform .12s;
 }
-.day.pad{background:none;border-color:transparent}
+.day:hover{border-color:var(--line-hover)}
+.day:active{transform:scale(.96)}
+.day.pad{background:none;border-color:transparent;cursor:default;pointer-events:none}
+/* 有备注的日子：右下角一颗小点，不抢眼但看得见 */
+.day.hasnote::after{
+  content:"";position:absolute;right:5px;bottom:4px;width:4px;height:4px;border-radius:50%;
+  background:var(--gold);box-shadow:0 0 0 1.5px var(--w2b);
+}
 .day.done{background:rgba(74,222,159,.15);border-color:rgba(74,222,159,.24);color:var(--mint-fg);font-weight:600}
 .day.todo{background:var(--w2b);color:var(--day-todo)}
 .day.weekend{background:var(--weekend-bg);color:var(--weekend-fg)}
@@ -264,7 +298,8 @@ body{
 .update-bar .x:hover{color:var(--dim)}
 
 /* ---------- 底栏 ---------- */
-.foot{display:flex;align-items:center;gap:11px;margin-top:15px;padding:0 2px}
+/* 页脚贴底：窗口拉高时它落到最下面，中间的空白由上面的栅格吃掉 */
+.foot{display:flex;align-items:center;gap:11px;margin-top:auto;padding:15px 2px 0}
 .btn-ghost{
   display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:12px;
   border:1px solid var(--line);background:var(--w2b);color:var(--dim);
@@ -273,16 +308,66 @@ body{
 .btn-ghost:hover{color:var(--text);border-color:var(--line-hover)}
 .btn-ghost:active{transform:scale(.97)}
 .btn-ghost svg{width:14px;height:14px}
-.foot .foot-r{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
-.foot .note{font-size:11px;color:var(--faint);text-align:right;line-height:1.5}
-.foot .sig{
-  display:flex;align-items:center;gap:5px;font-size:10.5px;line-height:1.2;
-  color:var(--faint);opacity:.72;letter-spacing:.3px;user-select:none;
-  transition:opacity .2s;
+/* 一行说完：数据在哪 · 关窗后照跑 · 作者 · 版本（版本可点，点击查更新） */
+.foot .foot-r{
+  margin-left:auto;display:flex;align-items:center;justify-content:flex-end;
+  flex-wrap:wrap;gap:5px 7px;min-width:0;
+  font-size:11px;line-height:1.4;color:var(--faint);letter-spacing:.2px;
 }
-.foot .sig b{font-weight:600;letter-spacing:.6px;color:var(--dim);opacity:1}
-.foot .sig i{width:2px;height:2px;border-radius:50%;background:currentColor;opacity:.8}
-.foot .sig:hover{opacity:.95}
+.foot .note{white-space:nowrap}
+.foot .dot{opacity:.55}
+.foot .author{font-weight:600;color:var(--dim);letter-spacing:.4px}
+.foot .ver{
+  border:none;background:none;padding:0;font-family:inherit;font-size:11px;
+  color:var(--faint);cursor:pointer;letter-spacing:.2px;
+  border-bottom:1px dashed transparent;transition:.15s;
+}
+.foot .ver:hover{color:var(--gold);border-bottom-color:var(--gold-line-2)}
+.foot .ver.busy{color:var(--dim);cursor:progress}
+/* 查更新的回执：贴在版本号右边，两秒后自己消失 */
+.foot .ver-msg{color:var(--mint-fg);opacity:0;transition:opacity .2s}
+.foot .ver-msg.on{opacity:1}
+
+/* ---------- 日期备注 ---------- */
+.notepop{position:fixed;inset:0;z-index:70;display:none}
+.notepop.open{display:flex;align-items:center;justify-content:center;padding:18px}
+.notepop .mask{position:absolute;inset:0;background:var(--mask);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.notepop .box{
+  position:relative;width:min(430px,100%);background:var(--surface);
+  border:1px solid var(--line);border-radius:16px;padding:15px 15px 13px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);animation:popIn .16s ease-out;
+}
+@keyframes popIn{from{transform:translateY(8px) scale(.985)}to{transform:none}}
+.notepop h3{margin:0 0 3px;font-size:14px;font-weight:700}
+.notepop .sub{margin:0 0 11px;font-size:11.5px;color:var(--faint);line-height:1.55}
+.notepop textarea{width:100%;min-height:86px;resize:vertical;font-size:13px}
+.notepop .cnt{margin:6px 0 0;text-align:right;font-size:11px;color:var(--faint)}
+.notepop .cnt.warn{color:var(--amber)}
+.notepop .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:11px}
+.notepop .acts .btn{padding:8px 14px;font-size:12.5px}
+
+/* ---------- 关于 ---------- */
+.about-hero{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.about-hero .ico{
+  width:44px;height:44px;border-radius:13px;flex:0 0 auto;display:grid;place-items:center;
+  border:1px solid var(--gold-line);background:var(--gold-tint);color:var(--gold);
+}
+.about-hero .ico svg{width:22px;height:22px}
+.about-hero .nm{font-size:15px;font-weight:700}
+.about-hero .ds{font-size:11.5px;color:var(--faint);margin-top:3px}
+.about{border:1px solid var(--line);border-radius:13px;overflow:hidden;background:var(--inset)}
+.about-row{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;font-size:12.5px;line-height:1.5;border-bottom:1px solid var(--line-soft)}
+.about-row:last-child{border-bottom:none}
+.about-row .k{color:var(--faint);flex:0 0 62px}
+.about-row .v{color:var(--text);min-width:0;word-break:break-all}
+.about-row .v.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11.5px;color:var(--dim)}
+.about-link{
+  border:none;background:none;padding:0;font-family:inherit;font-size:12.5px;
+  color:var(--gold);cursor:pointer;text-decoration:underline;text-underline-offset:2px;
+  word-break:break-all;text-align:left;
+}
+.about-link:hover{color:var(--gold-2)}
+.about-note{margin:12px 0 0;font-size:11.5px;color:var(--faint);line-height:1.65}
 
 /* ---------- 设置面板 ---------- */
 .sheet{position:fixed;inset:0;z-index:60;display:none}
@@ -586,7 +671,10 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
     <div class="col-a">
       <section class="card hero">
         <div class="hero-top">
-          <span class="date" id="date">--</span>
+          <div class="when">
+            <span class="wd" id="weekday">--</span>
+            <span class="date" id="date">--</span>
+          </div>
           <span class="clock" id="clock">--:--:--.---</span>
         </div>
 
@@ -607,8 +695,16 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
         </div>
 
         <div class="duo">
-          <div><div class="k">已上班</div><div class="v" id="duoWorked">00:00:00.000</div></div>
-          <div><div class="k">距下班</div><div class="v" id="duoLeft">00:00:00.000</div></div>
+          <div>
+            <div class="k">已上班</div>
+            <div class="v" id="duoWorked">00:00:00.000</div>
+            <div class="s" id="duoIn">--</div>
+          </div>
+          <div>
+            <div class="k">距下班</div>
+            <div class="v" id="duoLeft">00:00:00.000</div>
+            <div class="s" id="duoOut">--</div>
+          </div>
         </div>
       </section>
 
@@ -647,7 +743,12 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
 
       <section class="card">
         <div class="cal-head">
-          <span class="cal-title">本月日历</span>
+          <div class="cal-left">
+            <button class="cal-nav" id="calPrev" aria-label="上个月" title="上个月">‹</button>
+            <span class="cal-title" id="calTitle"><b>--</b> 月</span>
+            <button class="cal-nav" id="calNext" aria-label="下个月" title="下个月">›</button>
+            <button class="cal-back" id="calToday" style="display:none">回到本月</button>
+          </div>
           <span class="cal-num">第 <b id="dayNo">0</b> / <b id="dayTotal">0</b> 天</span>
         </div>
         <div class="week">
@@ -660,6 +761,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
           <span><i style="background:rgba(70,92,133,.75)"></i>周末</span>
           <span><i style="background:rgba(157,123,239,.7)"></i>法定节假日</span>
           <span><i style="background:linear-gradient(135deg,#ffe08a,#ff9e5e)"></i>今天</span>
+          <span><i style="background:var(--gold);border-radius:50%"></i>有备注</span>
         </div>
       </section>
     </div>
@@ -671,11 +773,17 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
         <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"></path>
         <circle cx="12" cy="12" r="3"></circle>
       </svg>
-      <span id="hideTxt">藏钱</span>
+      <span id="hideTxt">隐藏金额</span>
     </button>
     <div class="foot-r">
-      <span class="note" id="footNote">数据只存在本机浏览器<br>快捷键 C 设置 · H 藏钱</span>
-      <span class="sig" title="上班鼓励器 · by Ethan"><b>Ethan</b><i></i><span id="verNum">v1.3.1</span></span>
+      <span class="note" id="footNote">数据只在本机</span>
+      <span class="dot">·</span>
+      <span class="note">关窗后台计时</span>
+      <span class="dot">·</span>
+      <b class="author">Ethan</b>
+      <span class="dot">·</span>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.0</button>
+      <span class="ver-msg" id="verMsg"></span>
     </div>
   </footer>
 </div>
@@ -690,7 +798,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
         <span class="dot"></span>首次使用
       </div>
       <h2 id="panelTitle">设置</h2>
-      <p class="sub" id="panelSub">改完点保存立即生效，只存在你这台设备的浏览器里。</p>
+      <p class="sub" id="panelSub">改完点保存立即生效，只存在这台电脑的数据库里。</p>
     </div>
 
     <div class="panel-tabs" id="panelTabs" role="tablist">
@@ -699,6 +807,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
       <button type="button" role="tab" data-pane="items">鼓励语</button>
       <button type="button" role="tab" data-pane="look">外观</button>
       <button type="button" role="tab" data-pane="desk">桌面</button>
+      <button type="button" role="tab" data-pane="about">关于</button>
     </div>
 
     <div class="panel-body">
@@ -836,12 +945,78 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
       <div class="hint" id="deskHint">点叉号不会退出，程序缩到右下角托盘继续计时；右键托盘图标可以退出。</div>
     </div>
     </div>
+
+    <div class="tab-pane" data-pane="about">
+    <div class="about-hero">
+      <span class="ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.2 1.9"></path>
+        </svg>
+      </span>
+      <div>
+        <div class="nm">上班鼓励器</div>
+        <div class="ds">把月薪拆成每秒都在跳的数字 <span id="aboutVer">v--</span></div>
+      </div>
+    </div>
+
+    <div class="about">
+      <div class="about-row">
+        <span class="k">源码</span>
+        <span class="v">
+          <button type="button" class="about-link" data-url="https://github.com/yoea/get-paid-live">github.com/yoea/get-paid-live</button>
+        </span>
+      </div>
+      <div class="about-row">
+        <span class="k">许可</span>
+        <span class="v">
+          <button type="button" class="about-link" data-url="https://github.com/yoea/get-paid-live/blob/main/LICENSE">MIT License</button>
+          <span style="color:var(--faint)"> © 2026 Ethan</span>
+        </span>
+      </div>
+      <div class="about-row">
+        <span class="k">反馈</span>
+        <span class="v">
+          <button type="button" class="about-link" data-url="https://github.com/yoea/get-paid-live/issues">提交 issue</button>
+        </span>
+      </div>
+      <div class="about-row">
+        <span class="k">更新</span>
+        <span class="v">
+          <button type="button" class="about-link" data-url="https://github.com/yoea/get-paid-live/releases">Release 列表</button>
+        </span>
+      </div>
+      <div class="about-row">
+        <span class="k">数据</span>
+        <span class="v mono" id="aboutDb">data.db</span>
+      </div>
+    </div>
+
+    <p class="about-note">
+      MIT 许可：可以随便用、改、分发，包括商用，保留版权声明即可；软件按「原样」提供，不附带任何担保。
+    </p>
+    </div>
     </div>
 
     <div class="panel-actions">
       <button class="btn danger" id="btnReset">重设</button>
       <button class="btn cancel" id="btnCancel">取消</button>
       <button class="btn primary" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 日期备注 ================= -->
+<div class="notepop" id="notePop">
+  <div class="mask" id="noteMask"></div>
+  <div class="box" role="dialog" aria-modal="true" aria-label="日期备注">
+    <h3 id="noteTitle">--</h3>
+    <p class="sub">给这天记一句话，100 字以内。存在本机的 data.db 里，不上传。</p>
+    <textarea id="noteBody" maxlength="100" spellcheck="false" placeholder="比如：今天发工资 / 需求评审过了一版"></textarea>
+    <div class="cnt" id="noteCnt">0 / 100</div>
+    <div class="acts">
+      <button class="btn danger" id="noteDel" style="display:none">删除</button>
+      <button class="btn cancel" id="noteCancel">取消</button>
+      <button class="btn primary" id="noteSave">保存</button>
     </div>
   </div>
 </div>
@@ -1393,10 +1568,11 @@ var Guliqi = (function () {
   var $ = function (id) { return document.getElementById(id); };
 
   var refs = {
-    badge: $('badge'), date: $('date'), clock: $('clock'),
+    badge: $('badge'), date: $('date'), clock: $('clock'), weekday: $('weekday'),
     earned: $('earned'), cur: $('cur'), speed: $('speed'), phaseNote: $('phaseNote'),
     msg: $('msg'), msgBody: $('msgBody'),
     duoWorked: $('duoWorked'), duoLeft: $('duoLeft'),
+    duoIn: $('duoIn'), duoOut: $('duoOut'),
     pct: $('pct'), barFill: $('barFill'),
     hWorked: $('hWorked'), hTotal: $('hTotal'), leftNote: $('leftNote'),
     monthTotal: $('monthTotal'), yearEarned: $('yearEarned'),
@@ -1521,17 +1697,48 @@ var Guliqi = (function () {
     }
   }
 
-  /* ---------- 日历 ---------- */
+  /* ---------- 日历 ----------
+     可以翻月；点任意一天能写一句备注，备注存在 SQLite（Python 侧 store.py）。
+     没有桌面桥时（浏览器直开）备注只留在内存里，界面上照常能写，只是关掉就没了。 */
+  var view = null;          // {y, m}，m 从 0 开始；null = 跟随今天所在月份
+  var notes = {};           // 当前显示月份的备注 {日期: 文本}
+  var notesKey = '';        // 已拉过哪个月，避免每帧都问一次
+
+  function monthKey(y, m) { return y + '-' + (m < 9 ? '0' : '') + (m + 1); }
+
+  function viewOf(date) { return { y: date.getFullYear(), m: date.getMonth() }; }
+
+  function sameView(a, b) { return !!a && !!b && a.y === b.y && a.m === b.m; }
+
+  function loadNotes() {
+    var key = monthKey(view.y, view.m);
+    if (key === notesKey) return;
+    notesKey = key;
+    notes = {};
+    var p = desk.call('get_notes', key);
+    if (p && typeof p.then === 'function') {
+      p.then(function (res) {
+        notes = (res && typeof res === 'object') ? res : {};
+        calKey = '';      // 数据回来了，下一帧重画（补上小圆点）
+      }, function () {});
+    }
+  }
+
   function renderCalendar(snap) {
+    if (!view) view = viewOf(snap.today);
     var t = snap.today;
-    var key = t.getFullYear() + '-' + t.getMonth() + '-' + t.getDate() + '-' + snap.status;
+    var isCur = sameView(view, viewOf(t));
+    var key = view.y + '-' + view.m + '|' + G.isoOf(t) + '|' + snap.status + '|' + Object.keys(notes).length;
     if (key === calKey) return;
     calKey = key;
+    loadNotes();
 
-    var y = t.getFullYear(), m = t.getMonth();
-    var first = new Date(y, m, 1);
+    $('calTitle').innerHTML = '<b>' + view.y + '</b> 年 <b>' + (view.m + 1) + '</b> 月';
+    $('calToday').style.display = isCur ? 'none' : '';
+
+    var first = new Date(view.y, view.m, 1);
     var lead = (first.getDay() + 6) % 7;          // 周一为一周之始
-    var last = new Date(y, m + 1, 0).getDate();
+    var last = new Date(view.y, view.m + 1, 0).getDate();
     var cal = engine.cal;
     var tIso = G.isoOf(t);
     var html = '';
@@ -1539,17 +1746,101 @@ var Guliqi = (function () {
     for (var i = 0; i < lead; i++) html += '<div class="day pad"></div>';
 
     for (var d = 1; d <= last; d++) {
-      var dt = new Date(y, m, d);
+      var dt = new Date(view.y, view.m, d);
       var iso = G.isoOf(dt);
       var cls = 'day';
       if (iso === tIso) cls += ' today';
       else if (cal.isWorkday(dt)) cls += dt.getTime() < t.getTime() ? ' done' : ' todo';
       else if (cal.holidays[iso]) cls += ' holiday';
       else cls += ' weekend';
-      html += '<div class="' + cls + '">' + d + '</div>';
+      if (notes[iso]) cls += ' hasnote';
+      html += '<div class="' + cls + '" data-d="' + iso + '"'
+        + (notes[iso] ? ' title="' + escAttr(notes[iso]) + '"' : '') + '>' + d + '</div>';
     }
     refs.days.innerHTML = html;
   }
+
+  function escAttr(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&quot;';
+    });
+  }
+
+  function redrawCalendar() {
+    calKey = '';
+    renderCalendar(engine.snapshot(nowAt(), cfg.demo));
+  }
+
+  function shiftMonth(delta) {
+    if (!view) view = viewOf(engine.snapshot(nowAt(), cfg.demo).today);
+    var m = view.m + delta, y = view.y;
+    if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+    view = { y: y, m: m };
+    notes = {};
+    notesKey = '';
+    redrawCalendar();
+  }
+
+  $('calPrev').addEventListener('click', function () { shiftMonth(-1); });
+  $('calNext').addEventListener('click', function () { shiftMonth(1); });
+  $('calToday').addEventListener('click', function () {
+    view = null;
+    notes = {};
+    notesKey = '';
+    redrawCalendar();
+  });
+
+  /* ---------- 日期备注 ---------- */
+  var noteDate = '';
+
+  function openNote(iso) {
+    noteDate = iso;
+    var body = notes[iso] || '';
+    var p = iso.split('-');
+    $('noteTitle').textContent = (+p[1]) + ' 月 ' + (+p[2]) + ' 日';
+    $('noteBody').value = body;
+    $('noteDel').style.display = body ? '' : 'none';
+    paintNoteCnt();
+    $('notePop').classList.add('open');
+    setTimeout(function () { try { $('noteBody').focus(); } catch (e) {} }, 60);
+  }
+
+  function closeNote() {
+    $('notePop').classList.remove('open');
+  }
+
+  function paintNoteCnt() {
+    var n = $('noteBody').value.length;
+    $('noteCnt').textContent = n + ' / 100';
+    $('noteCnt').classList.toggle('warn', n >= 95);
+  }
+
+  function commitNote(text) {
+    var body = String(text || '').slice(0, 100);
+    if (body) notes[noteDate] = body; else delete notes[noteDate];
+    closeNote();
+    redrawCalendar();          // 先把界面改掉，写库在后台完成
+    if (!desk.ready()) return;
+    desk.send('set_note', { date: noteDate, body: body });
+  }
+
+  refs.days.addEventListener('click', function (e) {
+    var cell = e.target && e.target.closest ? e.target.closest('.day') : null;
+    if (!cell) return;
+    var iso = cell.getAttribute('data-d');
+    if (iso) openNote(iso);
+  });
+
+  $('noteBody').addEventListener('input', paintNoteCnt);
+  $('noteCancel').addEventListener('click', closeNote);
+  $('noteMask').addEventListener('click', closeNote);
+  $('noteDel').addEventListener('click', function () { commitNote(''); });
+  $('noteSave').addEventListener('click', function () { commitNote($('noteBody').value); });
+  $('noteBody').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { e.stopPropagation(); closeNote(); }
+    // Ctrl/⌘ + Enter 直接存，长备注不用去点按钮
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); commitNote($('noteBody').value); }
+  });
 
   /* ---------- 主渲染 ---------- */
   function frame(now) {
@@ -1564,7 +1855,9 @@ var Guliqi = (function () {
       if (refs.tag) refs.tag.textContent = demoOn ? 'DEMO · 假时钟' : 'EARN · LIVE';
     }
 
-    setText('date', (snap.today.getMonth() + 1) + '月' + snap.today.getDate() + '日 星期' + WEEK_CN[snap.today.getDay()]);
+    // 星期和时间是这张卡的头，单独一行钉在最上面
+    setText('weekday', '星期' + WEEK_CN[snap.today.getDay()]);
+    setText('date', (snap.today.getMonth() + 1) + '月' + snap.today.getDate() + '日');
 
     var hh = String(now.getHours()).padStart(2, '0');
     var mm = String(now.getMinutes()).padStart(2, '0');
@@ -1652,12 +1945,19 @@ var Guliqi = (function () {
     if (Date.now() - lastFrame > 250) { lastFrame = Date.now(); frame(nowAt()); }
   }, 120);
 
+  // 两个大数下面那行小字：几点上班、几点下班
+  function paintDuoNotes() {
+    setText('duoIn', cfg.work_start + ' 上班');
+    setText('duoOut', cfg.work_end + ' 下班');
+  }
+
   function start() {
     if (raf !== null) cancelAnimationFrame(raf);
     cache = {};
     calKey = '';
     lastPhase = '';        // 重算一开始（含刚改完作息）就把当前时点当成起点，不补发提醒
     engine = new G.Engine(cfg);
+    paintDuoNotes();
     running = true;
     loop();
   }
@@ -1670,13 +1970,14 @@ var Guliqi = (function () {
     }
   });
 
-  /* ---------- 藏钱 ---------- */
+  /* ---------- 隐藏金额 ---------- */
   function toggleHide() {
     cfg.display.hide_money = !cfg.display.hide_money;
-    G.saveCfg(cfg);
+    G.saveCfg(cfg);                     // 本地缓存，下次启动第一帧就不闪
+    desk.send('save_cfg', cfg);         // 权威存储：SQLite
     cache = {};
     titleTick = 29;
-    refs.hideTxt.textContent = cfg.display.hide_money ? '显钱' : '藏钱';
+    refs.hideTxt.textContent = cfg.display.hide_money ? '显示金额' : '隐藏金额';
     document.getElementById('eyeIcon').innerHTML = cfg.display.hide_money
       ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>'
       : '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle>';
@@ -1693,7 +1994,7 @@ var Guliqi = (function () {
 
   /* ---------- 标签页 ----------
      面板内容已经长到一屏放不下，改成按主题分页；每页各自滚动，标题和标签栏固定。 */
-  var TABS = ['work', 'cal', 'items', 'look', 'desk'];
+  var TABS = ['work', 'cal', 'items', 'look', 'desk', 'about'];
   var curTab = 'work';
 
   function paintTabs() {
@@ -1816,8 +2117,8 @@ var Guliqi = (function () {
 
     $('panelTitle').textContent = firstRun ? '先花 20 秒设置一下' : '设置';
     $('panelSub').textContent = firstRun
-      ? '填完就能看到今天赚了多少。数据只存在你这台设备的浏览器里，不上传任何地方。'
-      : '改完点保存立即生效，只存在你这台设备的浏览器里。';
+      ? '填完就能看到今天赚了多少。数据只存在这台电脑上，不上传任何地方。'
+      : '改完点保存立即生效，只存在这台电脑的数据库里。';
     $('btnSave').textContent = firstRun ? '开始计算' : '保存';
     $('salaryReq').style.display = firstRun ? 'inline-block' : 'none';
 
@@ -1973,8 +2274,9 @@ var Guliqi = (function () {
       theme: draftTheme,
       display: { hide_money: cfg.display.hide_money }
     });
-    G.saveCfg(cfg);
+    G.saveCfg(cfg);            // 本地缓存（首帧用），权威数据写 SQLite
     G.markReady();
+    desk.send('save_cfg', cfg);
     applyTheme(cfg.theme);   // 已保存值可能和预览值相同，重放一次不会有副作用
     saveDeskOpts();          // 开机启动 / 检查更新交由桌面层落到系统里
     firstRun = false;
@@ -1982,7 +2284,7 @@ var Guliqi = (function () {
     document.body.classList.remove('firstrun');
     sheet.classList.remove('open');
     start();
-    refs.hideTxt.textContent = cfg.display.hide_money ? '显钱' : '藏钱';
+    refs.hideTxt.textContent = cfg.display.hide_money ? '显示金额' : '隐藏金额';
   });
 
   // 清空输入时的错误提示，别让红字一直挂着
@@ -1994,13 +2296,15 @@ var Guliqi = (function () {
   });
 
   $('btnReset').addEventListener('click', function () {
-    if (!confirm('清空现在填的薪资和时间，重新设置一遍？')) return;
+    if (!confirm('清空现在填的薪资和时间，重新设置一遍？\n日历里写的备注也会一起清掉。')) return;
     G.resetSaved();
+    desk.send('reset_store');      // SQLite 里的配置和备注一并清空
+    notes = {}; notesKey = ''; calKey = '';
     cfg = G.normalize({});
     // 配置清空 = 主题也回到默认，别让界面停在用户刚选的浅/深色上
     draftTheme = cfg.theme;
     applyTheme(cfg.theme);
-    refs.hideTxt.textContent = '藏钱';
+    refs.hideTxt.textContent = '隐藏金额';
     openSheet(true);          // 重设 = 再走一次首次引导
   });
 
@@ -2137,8 +2441,10 @@ var Guliqi = (function () {
   var updateUrl = '';
   var updateTag = '';
   var updateDismissed = '';
+  var lastUpdateAt = 0;      // 上次拿到结果的时间戳，用来判断"这次查完了没"
 
   function showUpdate(info) {
+    if (info && info.at) lastUpdateAt = info.at;
     if (!info || !info.newer || !info.tag) return;
     if (updateDismissed === info.tag) return;
     updateTag = info.tag;
@@ -2163,6 +2469,82 @@ var Guliqi = (function () {
     p.then(function (info) { if (info) showUpdate(info); }, function () {});
   }
 
+  /* ---------- 点版本号查更新 ----------
+     鼠标停在版本号上会提示「点击检查新版本」；点一下在后台查，结果贴在旁边两秒。 */
+  var verMsgTimer = null;
+
+  function flashVer(text) {
+    var el = $('verMsg');
+    el.textContent = text;
+    el.classList.add('on');
+    if (verMsgTimer) clearTimeout(verMsgTimer);
+    verMsgTimer = setTimeout(function () { el.classList.remove('on'); }, 3200);
+  }
+
+  (function () {
+    var btn = $('verNum');
+    var baseVer = btn.textContent;
+
+    btn.addEventListener('click', function () {
+      if (btn.classList.contains('busy')) return;
+      if (!desk.ready()) { flashVer('桌面版才能查'); return; }
+
+      var base = lastUpdateAt;
+      btn.classList.add('busy');
+      btn.textContent = '检查中…';
+      desk.send('check_update_now');
+
+      var tries = 0;
+      (function wait() {
+        tries++;
+        var p = desk.call('poll_update');
+        if (!p || typeof p.then !== 'function') {
+          btn.classList.remove('busy');
+          btn.textContent = baseVer;
+          return;
+        }
+        p.then(function (info) {
+          if (info && info.at && info.at > base) {
+            btn.classList.remove('busy');
+            btn.textContent = 'v' + (info.current || baseVer.replace(/^v/, ''));
+            lastUpdateAt = info.at;
+            if (info.newer) { showUpdate(info); flashVer('有新版本 ' + info.tag); }
+            else flashVer('已是最新');
+          } else if (tries < 16) {
+            setTimeout(wait, 700);
+          } else {
+            btn.classList.remove('busy');
+            btn.textContent = baseVer;
+            flashVer('网络不通，待会儿再试');
+          }
+        }, function () {
+          btn.classList.remove('busy');
+          btn.textContent = baseVer;
+        });
+      })();
+    });
+  })();
+
+  /* ---------- 关于 ---------- */
+  function paintAbout(opts) {
+    var v = (opts && opts.version) || '';
+    if (v) {
+      $('verNum').textContent = 'v' + v;
+      $('aboutVer').textContent = 'v' + v;
+    }
+    if (opts && opts.db) $('aboutDb').textContent = opts.db;
+  }
+
+  // 「关于」里的链接按钮：统一交给桌面层用系统浏览器打开（只放行 github.com）
+  panel.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('.about-link') : null;
+    if (!b) return;
+    var url = b.getAttribute('data-url');
+    if (!url) return;
+    if (!desk.ready()) { flashVer('用桌面版才能打开'); return; }
+    desk.send('open_url', url);
+  });
+
   /* ---------- 桌面选项 ---------- */
   function applyDeskOpts(opts) {
     if (!opts) return;
@@ -2171,7 +2553,7 @@ var Guliqi = (function () {
     $('fAutostart').checked = !!opts.autostart;
     $('fCheckUpdate').checked = !!opts.check_update;
     $('fNotify').checked = opts.notify_schedule !== false;
-    refs.note.innerHTML = '数据只存在本机<br>关闭窗口仍在后台计时 · C 设置 · H 藏钱';
+    paintAbout(opts);
     if (opts.update) showUpdate(opts.update);
   }
 
@@ -2201,16 +2583,64 @@ var Guliqi = (function () {
     else if (k === 'escape') closeSheet();
   });
 
-  /* ---------- 启动 ---------- */
-  refs.hideTxt.textContent = cfg.display.hide_money ? '显钱' : '藏钱';
+  /* ---------- 启动 ----------
+     数据以 SQLite 为准：先问桌面层要一份，拿到就按它跑；
+     v1.3.x 的老用户（只有 localStorage、库里还没有）自动迁一次；都没有才进首次引导。 */
+  refs.hideTxt.textContent = cfg.display.hide_money ? '显示金额' : '隐藏金额';
 
-  if (G.hasSaved()) {
-    start();
-  } else {
+  function firstRunUI() {
     // 首次进入：不启动计时、不显示任何金额，先把人拦在设置面板里
     document.body.classList.add('firstrun');
     openSheet(true);
   }
+
+  function adopt(raw) {
+    if (raw && typeof raw === 'object' && raw.monthly_salary !== undefined) {
+      cfg = G.normalize(raw);
+    }
+    applyTheme(cfg.theme);
+    refs.hideTxt.textContent = cfg.display.hide_money ? '显示金额' : '隐藏金额';
+    start();
+  }
+
+  function bootLocal() {
+    // 浏览器里直接打开（或桌面桥没起来）：退回 localStorage，功能照用，只是不落库
+    if (G.hasSaved()) start();
+    else firstRunUI();
+  }
+
+  function boot() {
+    if (!desk.ready()) { bootLocal(); return; }
+    var p = desk.call('get_state');
+    if (!p || typeof p.then !== 'function') { bootLocal(); return; }
+    p.then(function (res) {
+      if (!res) { bootLocal(); return; }
+      if (res.ready) {
+        adopt(res.cfg);
+      } else if (G.hasSaved()) {
+        adopt(null);                 // 沿用 localStorage 里那份
+        desk.send('save_cfg', cfg);  // 搬进 SQLite，之后就以库为准
+      } else {
+        firstRunUI();
+      }
+      if (res.opts) applyDeskOpts(res.opts);
+    }, bootLocal);
+  }
+
+  // 桥可能比脚本晚就绪：先等 pywebviewready；纯浏览器直开时用超时兜底，别一直白屏等桥
+  (function () {
+    var booted = false;
+    function go() {
+      booted = true;
+      boot();
+    }
+    if (desk.ready()) { go(); return; }
+    window.addEventListener('pywebviewready', function () {
+      if (booted && !desk.ready()) return;
+      go();              // 桥晚到：再走一遍 boot，adopt 会按库里的数据重启引擎
+    });
+    setTimeout(function () { if (!booted) go(); }, 1200);
+  })();
 
   /* ---------- 桌面集成：托盘数据 + 更新提示 ----------
      两个定时器在浏览器里也会跑，但 desk 为空时是空转，几乎零成本。 */

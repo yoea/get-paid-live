@@ -10,7 +10,7 @@
 - 到午休、午休结束、下班时发一条 Windows 原生通知（可在设置里关掉）
 - 每次启动查一次 GitHub Releases，有新版本就在界面上提一条
 
-配置（工资、作息）仍由 HTML 存在 localStorage；这里只额外存一份桌面选项。
+配置、桌面选项、日历备注全部存在 SQLite（store.py，落在 %LOCALAPPDATA%\\ShangBanGuLiQi\\data.db）。
 所有数据都在本机，唯一的外部请求是查版本号，可在设置里关掉。
 """
 
@@ -24,6 +24,7 @@ import webbrowser
 
 import webview
 
+import store
 from version import VERSION
 
 APP_ID = "Ewing.ShangBanGuLiQi.Desktop"
@@ -55,27 +56,14 @@ def storage_dir():
 
 
 # ---------------------------------------------------------------- 桌面选项
-
-def _options_path():
-    return os.path.join(storage_dir(), "desktop.json")
-
+# 全部落 SQLite（见 store.py），不再有 desktop.json。
 
 def load_options():
-    try:
-        with open(_options_path(), encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, ValueError):
-        return {}
-    return data if isinstance(data, dict) else {}
+    return store.load_opts()
 
 
 def save_options(data):
-    try:
-        with open(_options_path(), "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        return True
-    except OSError:
-        return False
+    return store.save_opts(data)
 
 
 # ---------------------------------------------------------------- 开机启动
@@ -458,6 +446,8 @@ def check_update(manual=False):
             "tag": tag,
             "newer": newer,
             "url": (data.get("html_url") or RELEASES_URL) if newer else "",
+            # 界面点版本号查更新时，靠这个时间戳判断"这次查完了"
+            "at": time.time(),
         }
     except Exception:
         if manual:
@@ -495,7 +485,30 @@ class Api(object):
             "check_update": bool(opts.get("check_update", True)),
             "notify_schedule": bool(opts.get("notify_schedule", True)),
             "update": state.update,
+            "db": store.path() or "",
         }
+
+    # ---- 数据存储（SQLite）。界面启动时整份拉一次，保存时整份写回。
+    def get_state(self):
+        return {
+            "version": VERSION,
+            "ready": store.has_saved(),
+            "cfg": store.load_cfg(),
+            "opts": self.get_settings(),
+        }
+
+    def save_cfg(self, cfg):
+        return store.save_cfg(cfg)
+
+    def reset_store(self):
+        return store.reset()
+
+    def get_notes(self, prefix):
+        return store.notes_in_month(prefix)
+
+    def set_note(self, payload):
+        data = payload if isinstance(payload, dict) else {}
+        return store.set_note(data.get("date"), data.get("body"))
 
     def set_autostart(self, enabled):
         ok = autostart_set(bool(enabled))
@@ -657,6 +670,7 @@ def main():
         )
         return 1
 
+    store.init(storage_dir())   # 先有库，后面的读取才有着落
     autostart_sync()
 
     try:
