@@ -9,6 +9,14 @@ import os
 import subprocess
 import sys
 
+# Windows 的 CI 上 stdout 默认是 cp1252，print 中文会直接抛 UnicodeEncodeError。
+# 这里强制 UTF-8，并透传给 PyInstaller 子进程（它也要打印中文文件名）。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 NAME = "上班鼓励器"
 
@@ -136,7 +144,10 @@ def main():
         "desktop.py",
     ]
     print("正在打包 %s（v%s）……" % (EXE_NAME, VERSION))
-    code = subprocess.call(cmd, cwd=HERE)
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    code = subprocess.call(cmd, cwd=HERE, env=env)
 
     exe = os.path.join(HERE, "dist", EXE_NAME + ".exe")
     if code == 0 and os.path.isfile(exe):

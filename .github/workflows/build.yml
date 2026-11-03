@@ -45,6 +45,10 @@ jobs:
 
       - name: 打包
         run: python build.py
+        env:
+          # Windows runner 默认 cp1252，不打这两条中文会当场报 UnicodeEncodeError
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: "1"
 
       - name: 校验产物
         shell: pwsh
