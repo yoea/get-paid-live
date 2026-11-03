@@ -1,0 +1,87 @@
+name: Build exe
+
+# 推一个 v* 标签就自动打包 + 发 Release；
+# 也可以在 Actions 页面手动跑一次，只出构建产物不发版。
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装打包依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install pywebview pyinstaller
+
+      - name: 校验标签与代码版本一致
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $ver = python -c "import build; print(build.VERSION)"
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          Write-Host "代码版本 $ver / 标签 $tag"
+          if ($ver -ne $tag) {
+            Write-Error "标签 $tag 与 build.py 里的 VERSION $ver 不一致，先把 build.py 改成 $tag 再打标签"
+            exit 1
+          }
+
+      - name: 打包
+        run: python build.py
+
+      - name: 校验产物
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist -Filter *.exe | Select-Object -First 1
+          if (-not $exe) { Write-Error "没有生成 exe"; exit 1 }
+          $info = (Get-Item $exe.FullName).VersionInfo
+          Write-Host ("文件名: " + $exe.Name)
+          Write-Host ("大小:   " + [math]::Round($exe.Length / 1MB, 1) + " MB")
+          Write-Host ("文件版本: " + $info.FileVersion)
+          Write-Host ("公司:     " + $info.CompanyName)
+          if (-not $exe.Name.Contains("v" + $info.FileVersion)) {
+            Write-Error "exe 文件名里没有版本号"
+            exit 1
+          }
+          if ([math]::Round($exe.Length / 1MB, 1) -lt 5) {
+            Write-Error "产物小于 5MB，八成是打包缺东西"
+            exit 1
+          }
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: get-paid-live-exe
+          path: dist/*.exe
+          retention-days: 7
+
+      - name: 发布 Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.exe
+          fail_on_unmatched_files: true
+          body: |
+            **Windows 桌面版**，下载下面的 exe 双击即可运行，不需要安装 Python、浏览器或任何运行库。
+
+            - 配置只存本机 `%LOCALAPPDATA%\ShangBanGuLiQi`，不联网、无账号、不上传数据
+            - 覆盖安装新版本，之前填的工资和作息不会丢
+            - 首次打开会先让你填月薪和上下班时间，填完才开始计算
+
+            用法、算法口径和已知限制见 [README](https://github.com/yoea/get-paid-live#readme)。

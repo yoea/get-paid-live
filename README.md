@@ -30,21 +30,37 @@ Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行
 - **藏钱模式**（`H`）：金额全变 `****`，只留工时，工位旁边不怕被看见
 - **演示模式**：可以设一个假的"当前时间"，下班后也能看效果
 
-## 怎么得到 exe
+## 下载
 
-仓库里不放二进制，自己打一个（约 20 秒）：
+到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `上班鼓励器-v1.1.0.exe`，双击运行。
+
+单文件约 13 MB，不需要安装 Python、浏览器或任何运行库。exe 文件名和右键「属性 → 详细信息」里都带版本号，方便确认拿到的是哪一版。
+
+## 自己打包
+
+打包已交给 GitHub Actions：**推一个 `v*` 标签，CI 会自动构建并把 exe 发到 Releases**。
+
+```bash
+# 先改 build.py 里的 VERSION，再打同名标签
+git tag -a v1.2.0 -m "v1.2.0"
+git push origin v1.2.0
+```
+
+工作流会先校验标签与代码里的版本号一致，不一致直接失败，避免发出版本号对不上的包。也可以在 Actions 页面手动触发，那样只产出构建产物不发版。
+
+本地打包同样可以（约 24 秒）：
 
 ```bash
 打包exe.bat
 ```
 
-生成 `dist\上班鼓励器.exe`，约 13 MB。第一次运行需要联网装 pywebview / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
+生成 `dist\上班鼓励器-v1.1.0.exe`。第一次运行需要联网装 pywebview / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
 
-也可以手动：
+或者手动：
 
 ```bash
 python -m venv .venv-build
-.venv-build\Scripts\python.exe -m pip install pywebview pyinstaller pillow
+.venv-build\Scripts\python.exe -m pip install pywebview pyinstaller
 .venv-build\Scripts\python.exe build.py
 ```
 
@@ -93,6 +109,7 @@ desktop.py             启动器（pywebview + WebView2）
 build.py               打包脚本，版本号与作者信息在这里
 打包exe.bat            一键打包
 app.ico                应用图标
+.github/workflows/     CI：打标签自动构建并发 Release
 ```
 
 ## 已知限制

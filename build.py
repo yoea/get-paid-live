@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""把 上班鼓励器 打成单文件 exe。
+"""把 上班鼓励器 打成单文件 exe，产物文件名带版本号。
 
-需要先用 .venv-build 里的 Python 装好 pywebview / pyinstaller。
-直接双击 打包exe.bat 即可，不必手动敲命令。
+本地用：双击 打包exe.bat（会自动准备 .venv-build 环境）
+CI 用：装好 pywebview / pyinstaller 后直接 python build.py
 """
 
 import os
@@ -12,9 +12,13 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 NAME = "上班鼓励器"
 
-# 版本号与作者信息：界面上（右下角签名）也有一处，改版本时记得两边一起改。
+# 版本号的唯一来源。改这里，exe 文件名、文件属性、Release 标签都跟着走。
+# 界面右下角的签名是 HTML 里的静态文字，打包时会核对（见 check_html_version）。
 VERSION = "1.1.0"
 AUTHOR = "Ethan"
+
+EXE_NAME = "%s-v%s" % (NAME, VERSION)
+INTERNAL_NAME = "ShangBanGuLiQi"
 
 VERSION_TEMPLATE = """VSVersionInfo(
   ffi=FixedFileInfo(
@@ -28,9 +32,9 @@ VERSION_TEMPLATE = """VSVersionInfo(
         StringStruct('CompanyName', '%(author)s'),
         StringStruct('FileDescription', '上班鼓励器 - 实时显示上班赚了多少钱'),
         StringStruct('FileVersion', '%(vs)s'),
-        StringStruct('InternalName', 'ShangBanGuLiQi'),
+        StringStruct('InternalName', '%(internal)s'),
         StringStruct('LegalCopyright', 'Copyright (C) 2026 %(author)s'),
-        StringStruct('OriginalFilename', '%(name)s.exe'),
+        StringStruct('OriginalFilename', '%(exe)s.exe'),
         StringStruct('ProductName', '上班鼓励器'),
         StringStruct('ProductVersion', '%(vs)s')
       ])
@@ -48,7 +52,8 @@ def write_version_file():
         "ver": tuple(parts[:4]),
         "vs": VERSION,
         "author": AUTHOR,
-        "name": NAME,
+        "internal": INTERNAL_NAME,
+        "exe": EXE_NAME,
     }
     path = os.path.join(HERE, ".version_info.txt")
     with open(path, "w", encoding="utf-8") as f:
@@ -63,17 +68,47 @@ def check_html_version():
         with open(page, encoding="utf-8") as f:
             html = f.read()
     except OSError:
-        return
-    if 'id="verNum">v' + VERSION + "<" not in html:
-        print("提示：%s 里的签名版本号不是 v%s，记得同步。" % (NAME + ".html", VERSION))
+        return True
+    if 'id="verNum">v' + VERSION + "<" in html:
+        return True
+    print("提示：%s 里的签名版本号不是 v%s，记得同步。" % (NAME + ".html", VERSION))
+    return False
+
+
+def pyinstaller_command():
+    """优先用项目内的构建环境；没有就用当前解释器里的（CI 场景）。"""
+    local = os.path.join(HERE, ".venv-build", "Scripts", "pyinstaller.exe")
+    if os.path.isfile(local):
+        return [local]
+    try:
+        import PyInstaller  # noqa: F401
+    except ImportError:
+        return None
+    return [sys.executable, "-m", "PyInstaller"]
+
+
+def clean_old_exe():
+    """dist 是构建输出目录，打包前清掉旧 exe，免得版本混淆。"""
+    dist = os.path.join(HERE, "dist")
+    if not os.path.isdir(dist):
+        return 0
+    removed = 0
+    for name in os.listdir(dist):
+        if name.lower().endswith(".exe"):
+            try:
+                os.remove(os.path.join(dist, name))
+                removed += 1
+            except OSError:
+                pass
+    return removed
 
 
 def main():
     os.chdir(HERE)
 
-    pyinstaller = os.path.join(HERE, ".venv-build", "Scripts", "pyinstaller.exe")
-    if not os.path.isfile(pyinstaller):
-        print("找不到构建环境，请先双击 打包exe.bat（它会自动准备）")
+    pyinstaller = pyinstaller_command()
+    if pyinstaller is None:
+        print("找不到 PyInstaller。本地请双击 打包exe.bat，CI 请先 pip install pyinstaller。")
         return 1
 
     if not os.path.isfile(os.path.join(HERE, NAME + ".html")):
@@ -83,24 +118,27 @@ def main():
     check_html_version()
     version_file = write_version_file()
 
-    cmd = [
-        pyinstaller,
+    old = clean_old_exe()
+    if old:
+        print("已清理 dist 里 %d 个旧 exe" % old)
+
+    cmd = pyinstaller + [
         "--noconfirm",
         "--clean",
         "--onefile",
         "--windowed",           # 不弹黑色控制台窗口
-        "--name", NAME,
+        "--name", EXE_NAME,     # exe 文件名带版本号
         "--icon", "app.ico",
         "--version-file", version_file,
-        # 界面直接复用网页版那份 html，改完网页版重新打包即可
+        # 界面资源随 exe 一起封进去
         "--add-data", NAME + ".html;.",
         "--collect-all", "webview",
         "desktop.py",
     ]
-    print("正在打包 v%s，第一次会慢一些……" % VERSION)
+    print("正在打包 %s（v%s）……" % (EXE_NAME, VERSION))
     code = subprocess.call(cmd, cwd=HERE)
 
-    exe = os.path.join(HERE, "dist", NAME + ".exe")
+    exe = os.path.join(HERE, "dist", EXE_NAME + ".exe")
     if code == 0 and os.path.isfile(exe):
         size = os.path.getsize(exe) / 1048576.0
         print("")
