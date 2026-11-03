@@ -1,0 +1,8 @@
+# 行尾统一交给 git 管理，避免跨机器检出后 bat 被改成 LF（cmd 会直接报错）
+* text=auto
+*.py    text eol=lf
+*.html  text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
