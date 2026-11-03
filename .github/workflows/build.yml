@@ -24,11 +24,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: 安装打包依赖
         run: |
           python -m pip install --upgrade pip
-          pip install pywebview pyinstaller
+          pip install -r requirements.txt
 
       - name: 校验标签与代码版本一致
         if: startsWith(github.ref, 'refs/tags/v')

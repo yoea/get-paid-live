@@ -8,7 +8,7 @@ echo [1/2] Preparing build environment, internet needed once...
 python -m venv .venv-build
 if errorlevel 1 goto fail
 ".venv-build\Scripts\python.exe" -m pip install -U pip -q
-".venv-build\Scripts\python.exe" -m pip install pywebview pyinstaller pillow -q
+".venv-build\Scripts\python.exe" -m pip install -r requirements.txt -q
 if errorlevel 1 goto fail
 
 :build

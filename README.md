@@ -60,7 +60,7 @@ git push origin v1.2.0
 
 ```bash
 python -m venv .venv-build
-.venv-build\Scripts\python.exe -m pip install pywebview pyinstaller
+.venv-build\Scripts\python.exe -m pip install -r requirements.txt
 .venv-build\Scripts\python.exe build.py
 ```
 
@@ -108,6 +108,7 @@ desktop.py             启动器（pywebview + WebView2）
 上班鼓励器.html         界面与全部逻辑
 build.py               打包脚本，版本号与作者信息在这里
 打包exe.bat            一键打包
+requirements.txt       打包依赖（只装在构建机，不随 exe 分发）
 app.ico                应用图标
 .github/workflows/     CI：打标签自动构建并发 Release
 ```
