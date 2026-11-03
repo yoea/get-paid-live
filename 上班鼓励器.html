@@ -76,7 +76,7 @@ body{
   color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   min-height:100vh;
-  padding:18px 14px calc(24px + env(safe-area-inset-bottom));
+  padding:18px 14px calc(12px + env(safe-area-inset-bottom));
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
   /* 整页纵向排布：内容区吃掉多余高度，页脚贴底，窗口拉高时不再留一大片空 */
@@ -299,7 +299,7 @@ body{
 
 /* ---------- 底栏 ---------- */
 /* 页脚贴底：窗口拉高时它落到最下面，中间的空白由上面的栅格吃掉 */
-.foot{display:flex;align-items:center;gap:11px;margin-top:auto;padding:15px 2px 0}
+.foot{display:flex;align-items:center;gap:11px;margin-top:auto;padding:10px 2px 0}
 .btn-ghost{
   display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:12px;
   border:1px solid var(--line);background:var(--w2b);color:var(--dim);
@@ -314,9 +314,9 @@ body{
   flex-wrap:wrap;gap:5px 7px;min-width:0;
   font-size:11px;line-height:1.4;color:var(--faint);letter-spacing:.2px;
 }
-.foot .note{white-space:nowrap}
+.foot .author{font-weight:600;color:var(--dim);letter-spacing:.4px;text-decoration:none;transition:color .15s}
+.foot .author:hover{color:var(--text)}
 .foot .dot{opacity:.55}
-.foot .author{font-weight:600;color:var(--dim);letter-spacing:.4px}
 .foot .ver{
   border:none;background:none;padding:0;font-family:inherit;font-size:11px;
   color:var(--faint);cursor:pointer;letter-spacing:.2px;
@@ -519,17 +519,17 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
 .btn.danger{flex:0 0 auto;padding:12px 14px;color:#ff8b8b;border-color:rgba(255,139,139,.22);background:rgba(255,139,139,.06);font-size:13px}
 
 @media(min-width:720px){
-  body{padding:26px 20px 32px}
+  body{padding:26px 20px 14px}
   .panel{
     left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);
     width:600px;max-height:86vh;border-radius:18px;border-bottom:1px solid var(--line);
-    animation:popIn .18s ease;padding:0;
+    animation:panelPopIn .18s ease;padding:0;
   }
   .panel-head{padding:18px 20px 0}
   .panel-tabs{margin-top:12px;padding:0 14px}
   .panel-body{padding:10px 20px 8px}
   .panel-actions{padding:12px 20px 16px;border-radius:0 0 18px 18px}
-  @keyframes popIn{from{transform:translate(-50%,-47%)}to{transform:translate(-50%,-50%)}}
+  @keyframes panelPopIn{from{transform:translate(-50%,-47%)}to{transform:translate(-50%,-50%)}}
   .panel-grab{display:none}
   .hero{padding:22px 22px 22px}
   .hero-money{font-size:68px}
@@ -548,6 +548,15 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
 }
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
+}
+
+/* ---------- 背景粒子 ----------
+   画布垫在所有内容之下（z-index:-1 只低于内容、不遮 body 底色），
+   translateZ(0) 让浏览器把它作为独立合成层走 GPU；
+   pointer-events:none 保证不挡任何点击。 */
+#bgFx{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;
+  transform:translateZ(0);will-change:transform;
 }
 
 /* ---------- 浅色主题 ----------
@@ -641,6 +650,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
 </script>
 </head>
 <body>
+<canvas id="bgFx" aria-hidden="true"></canvas>
 <div class="app">
 
   <header class="top">
@@ -776,13 +786,9 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
       <span id="hideTxt">隐藏金额</span>
     </button>
     <div class="foot-r">
-      <span class="note" id="footNote">数据只在本机</span>
+      <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <span class="note">关窗后台计时</span>
-      <span class="dot">·</span>
-      <b class="author">Ethan</b>
-      <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.0</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.1</button>
       <span class="ver-msg" id="verMsg"></span>
     </div>
   </footer>
@@ -1578,7 +1584,7 @@ var Guliqi = (function () {
     monthTotal: $('monthTotal'), yearEarned: $('yearEarned'),
     hourly: $('hourly'), dailyPay: $('dailyPay'),
     dayNo: $('dayNo'), dayTotal: $('dayTotal'), days: $('days'),
-    hideTxt: $('hideTxt'), note: $('footNote'),
+    hideTxt: $('hideTxt'),
     tag: document.querySelector('.tag')
   };
 
@@ -1996,6 +2002,17 @@ var Guliqi = (function () {
      面板内容已经长到一屏放不下，改成按主题分页；每页各自滚动，标题和标签栏固定。 */
   var TABS = ['work', 'cal', 'items', 'look', 'desk', 'about'];
   var curTab = 'work';
+
+  /* 「桌面」标签只在桌面版（Python 桥就绪）显示：
+     纯 HTML 直开时开机启动/查更新/到点提醒全是空话，页面是空白的，直接藏掉。 */
+  function paintDeskTab() {
+    var on = desk.ready();
+    var tabBtn = $('panelTabs').querySelector('button[data-pane="desk"]');
+    var pane = panel.querySelector('.tab-pane[data-pane="desk"]');
+    if (tabBtn) tabBtn.style.display = on ? '' : 'none';
+    if (pane) pane.style.display = on ? '' : 'none';
+    if (!on && curTab === 'desk') { curTab = 'work'; }
+  }
 
   function paintTabs() {
     var btns = $('panelTabs').querySelectorAll('button');
@@ -2570,17 +2587,106 @@ var Guliqi = (function () {
     desk.send('set_notify_schedule', !!$('fNotify').checked);
   }
 
-  /* ---------- 快捷键 ---------- */
+  /* ---------- 背景粒子 ----------
+     46 个微光点缓慢上浮 + 轻微闪烁，透明度压得很低，
+     只求「有东西在动」，不抢数字的戏。
+     GPU 加速：画布本身是独立合成层（见 #bgFx 的 translateZ(0)），
+     每帧只做 canvas 2D 绘制，浏览器把结果直接交给显卡合成；
+     页面隐藏时暂停，系统开了「减少动态效果」时完全不跑。 */
+  (function () {
+    var cv = $('bgFx');
+    if (!cv || !cv.getContext) return;
+    var reduceMotion = false;
+    try { reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    if (reduceMotion) return;
+
+    var ctx = cv.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = 0, H = 0;
+    var N = 46, ps = [];
+
+    // 两套配色各取一半：深色主题是金/青微光，浅色主题压深成淡金/淡蓝灰
+    var COLORS_DARK = ['255,200,87', '78,205,196', '255,236,170'];
+    var COLORS_LIGHT = ['176,132,32', '70,150,146', '120,130,160'];
+
+    function palette() {
+      return document.documentElement.getAttribute('data-theme') === 'light' ? COLORS_LIGHT : COLORS_DARK;
+    }
+    function baseAlpha() {
+      return document.documentElement.getAttribute('data-theme') === 'light' ? 0.10 : 0.16;
+    }
+    function spawn(w, h) {
+      return {
+        x: Math.random() * w, y: Math.random() * h,
+        r: 0.7 + Math.random() * 1.9,                                  // 半径（CSS px）
+        vx: (Math.random() - 0.5) * 0.10,                              // 水平漂移
+        vy: -(0.04 + Math.random() * 0.14),                            // 缓慢上浮
+        tw: 0.4 + Math.random() * 0.9,                                 // 闪烁速度
+        ph: Math.random() * Math.PI * 2,                               // 闪烁相位
+        c: Math.floor(Math.random() * 3)
+      };
+    }
+    function resize() {
+      W = window.innerWidth; H = window.innerHeight;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      cv.style.width = W + 'px'; cv.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    resize();
+    for (var i = 0; i < N; i++) ps.push(spawn(W, H));
+
+    var running = false, rafId = 0;
+    function frame(t) {
+      rafId = 0;
+      var pal = palette(), A = baseAlpha();
+      ctx.clearRect(0, 0, W, H);
+      for (var i = 0; i < N; i++) {
+        var p = ps[i];
+        p.x += p.vx; p.y += p.vy;
+        if (p.y < -6) { p.y = H + 6; p.x = Math.random() * W; }
+        if (p.x < -6) p.x = W + 6; else if (p.x > W + 6) p.x = -6;
+        var a = A * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
+        if (a <= 0.01) continue;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, 6.2832);
+        ctx.fillStyle = 'rgba(' + pal[p.c] + ',' + a.toFixed(3) + ')';
+        ctx.fill();
+      }
+      if (running && !document.hidden) rafId = requestAnimationFrame(frame);
+    }
+    function start() {
+      if (running || document.hidden) return;
+      running = true;
+      if (!rafId) rafId = requestAnimationFrame(frame);
+    }
+    function stop() {
+      running = false;
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      ctx.clearRect(0, 0, W, H);
+    }
+
+    window.addEventListener('resize', function () {
+      resize();
+      // 尺寸变了重撒粒子，避免全挤在旧区域
+      for (var i = 0; i < N; i++) ps[i] = spawn(W, H);
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stop(); else start();
+    });
+    start();
+  })();
+
+  /* ---------- 快捷键 ----------
+     只保留 Esc 关面板。C/H 之类的单键快捷键已移除：
+     选中文字想 Ctrl+C 时会误触发，得不偿失。 */
   document.addEventListener('keydown', function (e) {
     var t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
       if (e.key === 'Escape') closeSheet();
       return;
     }
-    var k = e.key.toLowerCase();
-    if (k === 'h') { e.preventDefault(); if (!firstRun) toggleHide(); }
-    else if (k === 'c') { e.preventDefault(); if (!firstRun) openSheet(false); }
-    else if (k === 'escape') closeSheet();
+    if (e.key === 'Escape') closeSheet();
   });
 
   /* ---------- 启动 ----------
@@ -2605,12 +2711,14 @@ var Guliqi = (function () {
 
   function bootLocal() {
     // 浏览器里直接打开（或桌面桥没起来）：退回 localStorage，功能照用，只是不落库
+    paintDeskTab();              // 没有桥，「桌面」标签藏掉
     if (G.hasSaved()) start();
     else firstRunUI();
   }
 
   function boot() {
     if (!desk.ready()) { bootLocal(); return; }
+    paintDeskTab();              // 桥就绪，「桌面」标签亮出来
     var p = desk.call('get_state');
     if (!p || typeof p.then !== 'function') { bootLocal(); return; }
     p.then(function (res) {
