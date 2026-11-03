@@ -27,7 +27,7 @@ EXE_BASE = "GetPaidLive"
 
 # 版本号的唯一来源。改这里，exe 文件名、文件属性、Release 标签都跟着走。
 # 界面右下角的签名是 HTML 里的静态文字，打包时会核对（见 check_html_version）。
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 AUTHOR = "Ethan"
 
 EXE_NAME = "%s-v%s" % (EXE_BASE, VERSION)
