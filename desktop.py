@@ -506,6 +506,35 @@ class Api(object):
     def get_notes(self, prefix):
         return store.notes_in_month(prefix)
 
+    def fit_window(self, height):
+        """把窗口高度收到内容实际需要的大小（页面启动后量好报上来）。
+
+        初始 900 高是固定值，内容用不满时底部空一截。只调高度不动宽度，
+        夹在 min_size 和屏幕高度之间；和当前高度差得太小就不折腾，
+        避免内容一像素一像素长高时窗口跟着抖。
+        """
+        try:
+            h = int(round(float(height)))
+        except (TypeError, ValueError):
+            return "bad height"
+        win = state.window
+        if win is None:
+            return "no window"
+        max_h = 1100
+        try:
+            scr = webview.screens[0]
+            max_h = max(620, int(scr.height) - 80)
+        except Exception:
+            pass
+        h = max(620, min(h, max_h))
+        if abs(h - win.height) < 16:
+            return "close enough"
+        try:
+            win.resize(win.width, h)
+        except Exception:
+            return "resize failed"
+        return "ok"
+
     def set_note(self, payload):
         data = payload if isinstance(payload, dict) else {}
         return store.set_note(data.get("date"), data.get("body"))

@@ -79,13 +79,14 @@ body{
   padding:18px 14px calc(12px + env(safe-area-inset-bottom));
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
-  /* 整页纵向排布：内容区吃掉多余高度，页脚贴底，窗口拉高时不再留一大片空 */
+  /* 纵向排布即可：页脚跟在内容后面，不强制贴视口底——
+     窗口多出来的高度交给桌面层按内容实际高度收窗（fit_window），两边都不留空洞 */
   display:flex;
   flex-direction:column;
 }
 .num, .hero-money, .v, .clock, .duo .v, .prog-head .p, .day{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
-.app{max-width:1080px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column}
+.app{max-width:1080px;margin:0 auto;width:100%;display:flex;flex-direction:column}
 
 /* ---------- 顶栏 ---------- */
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
@@ -299,7 +300,7 @@ body{
 
 /* ---------- 底栏 ---------- */
 /* 页脚贴底：窗口拉高时它落到最下面，中间的空白由上面的栅格吃掉 */
-.foot{display:flex;align-items:center;gap:11px;margin-top:auto;padding:10px 2px 0}
+.foot{display:flex;align-items:center;gap:11px;padding:10px 2px 0}
 .btn-ghost{
   display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:12px;
   border:1px solid var(--line);background:var(--w2b);color:var(--dim);
@@ -429,14 +430,20 @@ body{
 .panel.setup .setup-tip{display:flex}
 .panel.setup .req{display:inline-block}
 .panel.setup .sec-note{display:block}
-/* 首次设置只有一页，标签栏没必要出现；其余页的内容本来就全是 adv-field，会自动隐藏 */
+/* 首次设置只有一页，标签栏没必要出现；其它页（日历/鼓励语/外观/关于）整个藏掉，
+   首次见面只留标题、一句介绍和一个版本号 */
 .panel.setup .panel-tabs{display:none}
-.panel.setup .tab-pane{display:block}
+.panel.setup .tab-pane{display:none}
+.panel.setup .tab-pane[data-pane="work"]{display:block}
 /* 首次只问最关键的几项，商品表/补班日/主题那些先不打扰 */
 .panel.setup .field.adv-field{display:none}
 .panel.setup .btn.danger,
 .panel.setup .btn.cancel{display:none}
 .panel.setup #btnSave{font-size:16px;padding:13px}
+.setup-ver{
+  display:none;font-size:11px;color:var(--faint);letter-spacing:.04em;
+}
+.panel.setup .setup-ver{display:inline-block}
 /* 首次设置时把后面的仪表盘虚化，避免看到还没生效的数字 */
 body.firstrun main,body.firstrun .foot{filter:blur(7px);opacity:.28;pointer-events:none;user-select:none}
 .field{margin-bottom:13px}
@@ -788,7 +795,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.1</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.2</button>
       <span class="ver-msg" id="verMsg"></span>
     </div>
   </footer>
@@ -805,6 +812,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
       </div>
       <h2 id="panelTitle">设置</h2>
       <p class="sub" id="panelSub">改完点保存立即生效，只存在这台电脑的数据库里。</p>
+      <span class="setup-ver" id="setupVer"></span>
     </div>
 
     <div class="panel-tabs" id="panelTabs" role="tablist">
@@ -1957,6 +1965,22 @@ var Guliqi = (function () {
     setText('duoOut', cfg.work_end + ' 下班');
   }
 
+  /* ---------- 窗口高度自适应 ----------
+     初始窗口 900 高是拍脑袋给的，内容经常用不满，底栏下面空一大块。
+     启动后把页面实际高度报给桌面层（fit_window），由它把窗口收到刚好。
+     量两次：渲染完一次，字体加载/首帧稳定后再补一次；一个会话最多两次，
+     之后窗口归用户管，手动拉大拉小都不打扰。 */
+  var fitCount = 0;
+  function fitWindow() {
+    if (!desk.ready() || fitCount >= 2) return;
+    desk.send('fit_window', Math.ceil(document.documentElement.scrollHeight));
+  }
+  function fitWindowSoon(delay) {
+    if (fitCount >= 2) return;
+    fitCount++;
+    setTimeout(fitWindow, delay);
+  }
+
   function start() {
     if (raf !== null) cancelAnimationFrame(raf);
     cache = {};
@@ -1966,6 +1990,8 @@ var Guliqi = (function () {
     paintDuoNotes();
     running = true;
     loop();
+    fitWindowSoon(350);    // 渲染一帧后量高度，收一次窗口
+    setTimeout(function () { fitWindowSoon(0); }, 1200);  // 字体/布局稳定后再补一次
   }
 
   document.addEventListener('visibilitychange', function () {
@@ -2137,6 +2163,7 @@ var Guliqi = (function () {
       ? '填完就能看到今天赚了多少。数据只存在这台电脑上，不上传任何地方。'
       : '改完点保存立即生效，只存在这台电脑的数据库里。';
     $('btnSave').textContent = firstRun ? '开始计算' : '保存';
+    $('setupVer').textContent = $('verNum').textContent;   // 引导页右上的版本号，跟底栏同源
     $('salaryReq').style.display = firstRun ? 'inline-block' : 'none';
 
     if (firstRun) {
@@ -2302,6 +2329,15 @@ var Guliqi = (function () {
     sheet.classList.remove('open');
     start();
     refs.hideTxt.textContent = cfg.display.hide_money ? '显示金额' : '隐藏金额';
+  });
+
+  // 首次设置：在输入框里按回车直接保存，填完最后一项不用再去点按钮
+  panel.addEventListener('keydown', function (e) {
+    if (!firstRun || e.key !== 'Enter' || e.shiftKey) return;
+    var t = e.target;
+    if (!t || t.tagName !== 'INPUT') return;
+    e.preventDefault();
+    $('btnSave').click();
   });
 
   // 清空输入时的错误提示，别让红字一直挂着
