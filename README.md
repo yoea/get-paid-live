@@ -87,13 +87,13 @@ Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行
 
 ## 下载
 
-到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.3.0.exe`，双击运行。
+到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.3.1.exe`，双击运行。
 
 单文件约 20 MB，不需要安装 Python、浏览器或任何运行库。文件名和右键「属性 → 详细信息」里都带版本号，方便确认拿到的是哪一版。
 
 exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的 Windows 环境里现编译，从源码到产物这条链路可查（见下面的[打包与发布](#打包与发布)）。
 
-> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.3.0.exe` 会变成 `-v1.3.0.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
+> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.3.1.exe` 会变成 `-v1.3.1.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
 
 ## 打包与发布
 
@@ -130,7 +130,7 @@ git push origin v1.4.0
 | 存构建产物 | 上传到 Actions 的 Artifacts，保留 7 天 |
 | 发 Release | 用 `gh release` 创建版本并附上 exe，正文取自 `.github/release-notes.md` |
 
-**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.0、exe 里却是 1.3.0」这种发出去才发现的问题。
+**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.0、exe 里却是 1.3.1」这种发出去才发现的问题。
 
 ### 只想试打包，不想发版
 
@@ -144,7 +144,7 @@ CI 挂了或者想离线验证，本地也能打，约 24 秒：
 打包exe.bat
 ```
 
-生成 `dist\GetPaidLive-v1.3.0.exe`。第一次运行会联网装 pywebview / pystray / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
+生成 `dist\GetPaidLive-v1.3.1.exe`。第一次运行会联网装 pywebview / pystray / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
 
 或者手动执行等价的三条：
 
@@ -165,11 +165,11 @@ python -m venv .venv-build
 - **打包前清理 `dist` 里的旧 exe**（`build.py` 的 `clean_old_exe()`），否则本地多次打包会混进旧版本的包。
 - **pywebview 的 `closing` 事件返回值是反的。** handler 返回 `False` 才表示「不许关」——`Event.set()` 只在有 handler 返回 `False` 时才返回 `True`，winforms 拿到 `True` 就设 `args.Cancel = True`。按直觉写成「返回 True 取消关闭」的话，叉号会直接退出，而托盘的「退出」反而关不掉。
 - **JS 调 Python 接口时别传 `undefined`。** `api.foo(undefined)` 会被当成一个实参，零参方法直接 `TypeError: takes 1 positional argument but 2 were given`。所以 `desk.call()` 里按 `arg === undefined` 分成两条调用路径。
-- **托盘图标必须用 Pillow。** pystray 在 Windows 上会把图标对象存成临时 ICO 再 `LoadImage`，绕不开 PIL；这也是 v1.3.0 体积从 13 MB 涨到 20 MB 的原因。
+- **托盘图标必须用 Pillow。** pystray 在 Windows 上会把图标对象存成临时 ICO 再 `LoadImage`，绕不开 PIL；这也是 1.3 版体积从 13 MB 涨到 20 MB 的原因。
 
 ## 为什么是 20 MB
 
-界面交给 Windows 自带的 WebView2 渲染，不打包浏览器内核。Electron 这类方案最少 100 MB 起，这个方案只带 Python 运行时、一份 HTML，以及画托盘图标用的 Pillow——v1.3.0 加托盘时带进来的，约占 7 MB。
+界面交给 Windows 自带的 WebView2 渲染，不打包浏览器内核。Electron 这类方案最少 100 MB 起，这个方案只带 Python 运行时、一份 HTML，以及画托盘图标用的 Pillow——1.3 版加托盘时带进来的，约占 7 MB。
 
 启动前会检测 WebView2（Win11 自带，正常更新的 Win10 也有），真的缺了会弹出提示并给出官方下载地址，而不是双击没反应。
 
@@ -243,4 +243,4 @@ assets/screenshot.png         README 用的界面截图
 
 ---
 
-作者 **Ethan** · v1.3.0 · MIT
+作者 **Ethan** · v1.3.1 · MIT
