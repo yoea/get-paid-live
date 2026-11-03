@@ -1,4 +1,7 @@
 # 打包 exe 需要的依赖（只在构建机上装，不随 exe 分发）
 # pywebview 在 Windows 上会自动带上 pythonnet / clr_loader
 pywebview>=6.2,<7
+# 托盘图标（pystray 在 Windows 上走 win32 后端，图标要 pillow 画）
+pystray>=0.19,<1
+pillow>=10
 pyinstaller>=6.10,<7

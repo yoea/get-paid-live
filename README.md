@@ -2,7 +2,7 @@
 
 把月薪拆成每秒都在跳的数字。上班时瞄一眼：今天已经赚了多少，还要熬多久。
 
-Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行库、不联网。
+Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行库。点叉号不退出，缩到右下角托盘继续计时。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -17,17 +17,52 @@ Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行
 - **当月日历点阵**：每天都画出来，上班日、休息日、节假日、今天各一色
 - **鼓励语**：算出「再过多久，某件小东西就到手了」。内置 32 件商品，从 2 元的矿泉水到 1 万元的一次旅行，日薪几百和日薪上千的人都能挑到合适的目标
 - **藏钱模式**（`H`）：金额全变 `****`，只留工时，工位旁边不怕被看见
+- **主题**：默认跟随系统，也可以固定浅色或深色
 - **演示模式**：可以设一个假的"当前时间"，下班后也能看效果
+- **托盘图标**：关掉窗口程序不退出，鼠标停上去就能看到今天干到哪了
+- **开机自动启动**：第一次运行就替你注册好，设置里随时能关
+- **自动查新版**：启动时问一次 GitHub，有新版本在顶上提示，点一下去下载
+
+## 托盘与开机启动
+
+界面上的叉号**不是退出**。点它窗口收进右下角托盘，计时照跑，鼠标悬停就能看到三个数：
+
+```
+已上班 3 小时 12 分 · 还有 1 小时 30 分 · ￥123.46
+```
+
+没开工、午休、下班后、休息日各有各的说法（「今天下班了 · 今日 ￥356.20」）。开了藏钱模式，托盘里的金额也一起变成 `****`。
+
+- **左键点图标** → 回到主界面
+- **右键菜单** → 打开主界面 / 开机自动启动（打勾切换）/ 检查更新 / 退出
+
+真的要退出，走右键菜单里的「退出」——这是唯一的正常出口。
+
+**开机启动**写在当前用户的 `HKCU\...\Run` 里，不需要管理员权限。首次运行程序会自己注册一次；之后你在设置里关掉它就真的不再自动打开了。换了 exe 的存放位置，下次启动会自动把注册表里的路径改成新的。
+
+**数据不全靠界面算**：窗口藏到托盘后，系统会把页面里的定时器节流到一分钟才跑一次。所以程序自己会按最后一次快照把「已赚」和「还剩」往前推，悬停看到的不会是一分钟前的旧数。
+
+## 主题
+
+`设置 → 界面主题`，三个选项：
+
+- **跟随系统**（默认）：跟 Windows 的「应用模式」走。系统切到夜间模式，界面跟着变深，不用手动换
+- **浅色**：白底深字，白天亮环境下看得更舒服
+- **深色**：原本的深色金调，数字最扎眼
+
+点一下立刻预览，点「保存」才记住，点「取消」退回原来的。跟工资那些设置一样，只存在本机，不联网。
+
+> 主题在第一帧之前就定好了（放在 `<head>` 里直接读 localStorage），所以深色用户启动时不会先闪一下白底。
 
 ## 下载
 
-到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.2.0.exe`，双击运行。
+到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.3.0.exe`，双击运行。
 
-单文件约 13 MB，不需要安装 Python、浏览器或任何运行库。文件名和右键「属性 → 详细信息」里都带版本号，方便确认拿到的是哪一版。
+单文件约 20 MB，不需要安装 Python、浏览器或任何运行库。文件名和右键「属性 → 详细信息」里都带版本号，方便确认拿到的是哪一版。
 
 exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的 Windows 环境里现编译，从源码到产物这条链路可查（见下面的[打包与发布](#打包与发布)）。
 
-> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.2.0.exe` 会变成 `-v1.2.0.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
+> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.3.0.exe` 会变成 `-v1.3.0.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
 
 ## 打包与发布
 
@@ -35,18 +70,18 @@ exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的
 
 ### 发一个正式版本
 
-版本号只有一个来源：`build.py` 里的 `VERSION`。改它，exe 文件名、文件属性、Release 标签全都跟着走。
+版本号只有一个来源：`version.py` 里的 `VERSION`。改它，exe 文件名、文件属性、界面右下角的签名核对、Release 标签、查更新时的比对基准全都跟着走。
 
 ```bash
-# 1. 改 build.py：VERSION = "1.3.0"
-# 2. 顺手改 上班鼓励器.html 里的 <span id="verNum">v1.3.0</span>
+# 1. 改 version.py：VERSION = "1.4.0"
+# 2. 顺手改 上班鼓励器.html 里的 <span id="verNum">v1.4.0</span>
 # 3. 提交
-git add -A && git commit -m "v1.3.0"
+git add -A && git commit -m "v1.4.0"
 git push
 
 # 4. 打同名标签推上去，剩下的交给 CI
-git tag -a v1.3.0 -m "v1.3.0"
-git push origin v1.3.0
+git tag -a v1.4.0 -m "v1.4.0"
+git push origin v1.4.0
 ```
 
 推完标签后大概 1–2 分钟，[Releases](https://github.com/yoea/get-paid-live/releases) 上就多一个带 exe 的版本。
@@ -58,13 +93,13 @@ git push origin v1.3.0
 | 检出代码 | `windows-latest` 干净环境 |
 | 安装 Python | 3.12，`cache: pip` 按 `requirements.txt` 缓存依赖 |
 | 装依赖 | pywebview（框架）+ pyinstaller（打包器），只装在构建机上 |
-| 校验版本号 | 标签 `v1.3.0` 必须等于 `build.py` 里的 `VERSION`，不一致直接失败 |
+| 校验版本号 | 标签 `v1.4.0` 必须等于 `version.py` 里的 `VERSION`，不一致直接失败 |
 | 打包 | 跑 `python build.py`，产出单文件 exe |
 | 校验产物 | 文件名里必须含版本号、体积必须大于 5 MB，否则判定打包缺东西 |
 | 存构建产物 | 上传到 Actions 的 Artifacts，保留 7 天 |
 | 发 Release | 用 `gh release` 创建版本并附上 exe，正文取自 `.github/release-notes.md` |
 
-**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.3.0、exe 里却是 1.2.0」这种发出去才发现的问题。
+**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.0、exe 里却是 1.3.0」这种发出去才发现的问题。
 
 ### 只想试打包，不想发版
 
@@ -78,7 +113,7 @@ CI 挂了或者想离线验证，本地也能打，约 24 秒：
 打包exe.bat
 ```
 
-生成 `dist\GetPaidLive-v1.2.0.exe`。第一次运行会联网装 pywebview / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
+生成 `dist\GetPaidLive-v1.3.0.exe`。第一次运行会联网装 pywebview / pystray / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
 
 或者手动执行等价的三条：
 
@@ -97,22 +132,29 @@ python -m venv .venv-build
 - **`setup-python` 的 `cache: pip` 找不到依赖清单会直接失败**，连 Python 都装不上。所以仓库里必须有 `requirements.txt`，并用 `cache-dependency-path` 指向它。
 - **用 `gh release` 而不是 marketplace 的发布 action。** 两者剥中文名的行为一模一样，`gh` 少一层封装，日志更直接、出错时好查。
 - **打包前清理 `dist` 里的旧 exe**（`build.py` 的 `clean_old_exe()`），否则本地多次打包会混进旧版本的包。
+- **pywebview 的 `closing` 事件返回值是反的。** handler 返回 `False` 才表示「不许关」——`Event.set()` 只在有 handler 返回 `False` 时才返回 `True`，winforms 拿到 `True` 就设 `args.Cancel = True`。按直觉写成「返回 True 取消关闭」的话，叉号会直接退出，而托盘的「退出」反而关不掉。
+- **JS 调 Python 接口时别传 `undefined`。** `api.foo(undefined)` 会被当成一个实参，零参方法直接 `TypeError: takes 1 positional argument but 2 were given`。所以 `desk.call()` 里按 `arg === undefined` 分成两条调用路径。
+- **托盘图标必须用 Pillow。** pystray 在 Windows 上会把图标对象存成临时 ICO 再 `LoadImage`，绕不开 PIL；这也是 v1.3.0 体积从 13 MB 涨到 20 MB 的原因。
 
-## 为什么只有 13 MB
+## 为什么是 20 MB
 
-界面交给 Windows 自带的 WebView2 渲染，不打包浏览器内核。Electron 这类方案最少 100 MB 起，这个方案只带 Python 运行时和一份 HTML。
+界面交给 Windows 自带的 WebView2 渲染，不打包浏览器内核。Electron 这类方案最少 100 MB 起，这个方案只带 Python 运行时、一份 HTML，以及画托盘图标用的 Pillow——v1.3.0 加托盘时带进来的，约占 7 MB。
 
 启动前会检测 WebView2（Win11 自带，正常更新的 Win10 也有），真的缺了会弹出提示并给出官方下载地址，而不是双击没反应。
 
-## 数据只存本地
+## 数据只在本地，只查一次版本号
 
-**不联网、无账号、不上传任何东西。**
+**无账号、不上传任何东西。** 唯一的对外请求是启动时向 GitHub 查一次最新版本号。
 
-- 配置全部存在 `%LOCALAPPDATA%\ShangBanGuLiQi`
+- 工资和作息存在 `%LOCALAPPDATA%\ShangBanGuLiQi` 里（WebView2 的 localStorage）
+- 桌面选项（是否开机启动、是否查更新）存在同目录的 `desktop.json`
+- 开机启动项在 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`，关掉开关就删掉
 - 覆盖安装新版 exe，之前填的工资和作息不会丢
-- 想彻底清除，删掉那个目录即可
+- 想彻底清除，删掉那个目录，再在设置里关掉开机启动
 
-技术细节：程序启动时会在 `127.0.0.1` 上起一个本地静态服务来托管界面。这不是网络服务——WebView2 在 `file://` 协议下拒绝使用 localStorage（判定为不安全），只能走本地 http。它只监听回环地址，外部访问不到，也不产生任何外部请求。
+那个版本检查只请求 `api.github.com/repos/yoea/get-paid-live/releases/latest`，拿回一个标签号跟自己的版本比一下，不带任何本机信息。不想要就在设置里关掉「启动时检查更新」，关掉之后程序一次网络都不碰。
+
+技术细节：程序启动时会在 `127.0.0.1` 上起一个本地静态服务来托管界面。这不是网络服务——WebView2 在 `file://` 协议下拒绝使用 localStorage（判定为不安全），只能走本地 http。它只监听回环地址，外部访问不到。
 
 ## 算法口径
 
@@ -135,15 +177,18 @@ python -m venv .venv-build
 
 月薪建议填**到手数**，这样算出来的钱才是你真正能花的。
 
+第一次运行时，程序会顺手把开机启动注册好（下次开机它自己会起来）。不想这样，进设置把「开机自动启动」关掉就行，关掉之后不会再自己打开。
+
 ## 项目结构
 
 ```
-desktop.py                    启动器（pywebview + WebView2）
+desktop.py                    桌面外壳：窗口、托盘、开机启动、查更新
 上班鼓励器.html                界面与全部逻辑
-build.py                      打包脚本，版本号与作者信息在这里
+version.py                    版本号（唯一来源，打包和查更新都读它）
+build.py                      打包脚本，版本号之外的打包参数在这里
 打包exe.bat                   一键打包（本地用，CI 不用它）
 requirements.txt              打包依赖（只装在构建机，不随 exe 分发）
-app.ico                       应用图标
+app.ico                       应用图标（窗口和托盘共用）
 LICENSE                       MIT 许可证
 .github/workflows/build.yml   CI：推 v* 标签自动构建并发 Release
 .github/release-notes.md      Release 正文模板
@@ -154,7 +199,9 @@ assets/screenshot.png         README 用的界面截图
 
 - **内置 2026–2027 年节假日安排**（2027 年按国务院办公厅通知预置）。两年之后请自行在设置里补充，或者干脆留空——留空不会报错，只会把节假日当工作日算。调休补班日因各公司排班不同，默认留空，需要你自己填。
 - 统计只覆盖**当月和当年**，没有历史账本，也不构成任何财务建议。
-- 只支持 Windows 10 及以上。
+- 只支持 **Windows 10 及以上**。开机启动、托盘都是 Windows 专属实现，没有跨平台版本。
+- 托盘文案精确到分钟，按最后一次界面快照最多外推 4 小时。电脑睡眠跨过午休时可能要打开界面让它重新同步一次。
+- 自动查更新需要能访问 `api.github.com`。连不上就静默跳过，不影响使用，也可以自己去看 Releases。
 
 ## 许可
 
@@ -164,4 +211,4 @@ assets/screenshot.png         README 用的界面截图
 
 ---
 
-作者 **Ethan** · v1.2.0 · MIT
+作者 **Ethan** · v1.3.0 · MIT

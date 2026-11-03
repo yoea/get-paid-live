@@ -1,15 +1,39 @@
 # -*- coding: utf-8 -*-
-"""上班鼓励器 · 桌面版
+"""上班鼓励器 · 桌面外壳
 
-用 Windows 自带的 WebView2 内核渲染界面，双击即用，不需要装浏览器或运行库。
-界面由同目录的 上班鼓励器.html 提供，打包时一并封进 exe。
-所有配置只存在本机（%LOCALAPPDATA%\\ShangBanGuLiQi），不联网、不上传任何数据。
+界面由同目录的 上班鼓励器.html 提供（Windows 自带的 WebView2 渲染，不打包浏览器内核）。
+这一层只管系统集成：
+
+- 开机自动启动（写 HKCU 的 Run 项，首次运行默认就注册）
+- 系统托盘图标：悬停显示已上班 / 还剩 / 已赚，左键回到主界面，右键有退出
+- 点窗口叉号不退出，而是隐藏到托盘
+- 每次启动查一次 GitHub Releases，有新版本就在界面上提一条
+
+配置（工资、作息）仍由 HTML 存在 localStorage；这里只额外存一份桌面选项。
+所有数据都在本机，唯一的外部请求是查版本号，可在设置里关掉。
 """
 
+import json
 import os
 import sys
+import threading
+import time
+import urllib.request
+import webbrowser
 
 import webview
+
+from version import VERSION
+
+APP_ID = "Ewing.ShangBanGuLiQi.Desktop"
+TITLE = "上班鼓励器"
+REPO = "yoea/get-paid-live"
+RELEASES_URL = "https://github.com/%s/releases" % REPO
+LATEST_API = "https://api.github.com/repos/%s/releases/latest" % REPO
+
+# 开机启动项：每个用户各自一份，不需要管理员权限
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+RUN_VALUE = "ShangBanGuLiQi"
 
 
 def resource_path(name):
@@ -28,6 +52,475 @@ def storage_dir():
         path = os.path.expanduser("~")
     return path
 
+
+# ---------------------------------------------------------------- 桌面选项
+
+def _options_path():
+    return os.path.join(storage_dir(), "desktop.json")
+
+
+def load_options():
+    try:
+        with open(_options_path(), encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_options(data):
+    try:
+        with open(_options_path(), "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except OSError:
+        return False
+
+
+# ---------------------------------------------------------------- 开机启动
+
+def _startup_command():
+    """注册表里要写的命令行。打包后指向 exe 自己；源码运行时指向 pythonw + 本文件。"""
+    if getattr(sys, "frozen", False):
+        return '"%s"' % os.path.abspath(sys.executable)
+    pyw = os.path.join(os.path.dirname(os.path.abspath(sys.executable)), "pythonw.exe")
+    runner = pyw if os.path.isfile(pyw) else sys.executable
+    return '"%s" "%s"' % (runner, os.path.abspath(__file__))
+
+
+def _autostart_value():
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            value, _ = winreg.QueryValueEx(key, RUN_VALUE)
+        return str(value or "")
+    except Exception:
+        return ""
+
+
+def autostart_enabled():
+    return bool(_autostart_value())
+
+
+def system_is_light():
+    """Windows 的应用主题是浅色还是深色（个性化 → 颜色 → 选择默认应用模式）。
+
+    只用于窗口创建时垫的那层底色：界面本身在 HTML 里按用户设置上色，
+    这里是让"浅色系统 + 跟随系统"的用户不会先看到一块黑底再跳白。
+    """
+    try:
+        import winreg
+
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+        ) as key:
+            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+        return bool(int(value))
+    except Exception:
+        return False
+
+
+def autostart_set(enabled):
+    """返回操作后的真实状态，调用方据此更新界面，而不是假装成功。"""
+    try:
+        import winreg
+
+        if enabled:
+            with winreg.CreateKeyEx(
+                winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE
+            ) as key:
+                winreg.SetValueEx(key, RUN_VALUE, 0, winreg.REG_SZ, _startup_command())
+        else:
+            try:
+                with winreg.OpenKey(
+                    winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE
+                ) as key:
+                    winreg.DeleteValue(key, RUN_VALUE)
+            except OSError:
+                pass
+    except Exception:
+        pass
+    return autostart_enabled()
+
+
+def autostart_sync():
+    """首次运行默认就注册开机启动；之后只在"用户还开着但路径变了"时修一下。"""
+    opts = load_options()
+    if not opts.get("autostart_initialized"):
+        opts["autostart_initialized"] = True
+        opts.setdefault("check_update", True)
+        save_options(opts)
+        autostart_set(True)
+        return
+    current = _autostart_value()
+    if current and os.path.normcase(current) != os.path.normcase(_startup_command()):
+        # 换了目录或者换了新版本 exe：把注册表里的路径改成现在这个，否则开机启动会指向不存在的文件
+        autostart_set(True)
+
+
+# ---------------------------------------------------------------- 运行状态
+
+class _State(object):
+    def __init__(self):
+        self.window = None
+        self.tray = None
+        self.tray_ready = False
+        self.quitting = False
+        self.status = {}          # 界面每隔几秒推来的快照
+        self.status_at = 0.0
+        self.update = None        # 查到的版本信息，供界面轮询取走
+        self.first_hide = True
+
+
+state = _State()
+
+
+def notify(title, message):
+    """托盘气泡提示。系统关了通知就静默失败，不影响主流程。"""
+    tray = state.tray
+    if tray is None:
+        return
+    try:
+        tray.notify(message, title)
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------- 托盘文案
+
+def _dur(sec):
+    total = int(max(0, sec))
+    if total < 60:
+        # 比"不到 1 分钟"更清楚：这里拿到的就是秒数，别含糊
+        return "%d 秒" % total
+    hours, rest = divmod(total, 3600)
+    minutes = rest // 60
+    if hours:
+        return "%d 小时 %d 分" % (hours, minutes) if minutes else "%d 小时" % hours
+    return "%d 分" % minutes
+
+
+def tray_tooltip():
+    """把最后一次快照按当前时刻外推。窗口藏到托盘后界面计时会被系统节流，
+    这里自己把「已赚」和「还剩」往前推，悬停看到的就不是几分钟前的旧数。"""
+    snap = state.status
+    if not snap:
+        return "%s v%s" % (TITLE, VERSION)
+
+    # status_at 没设过就别外推，否则会拿 1970 年算出一个荒谬的数
+    elapsed = 0.0
+    if state.status_at:
+        elapsed = max(0.0, min(time.time() - state.status_at, 4 * 3600))
+    working = bool(snap.get("working"))
+    earned = float(snap.get("earned") or 0)
+    worked = float(snap.get("worked") or 0)
+    remain = float(snap.get("remain") or 0)
+
+    if working:
+        earned += float(snap.get("rate") or 0) * elapsed
+        worked += elapsed
+        remain = max(0.0, remain - elapsed)
+
+    money = "****" if snap.get("masked") else "￥{:,.2f}".format(earned)
+    status = str(snap.get("status") or "")
+
+    if working or status in ("上班中", "小憩"):
+        if remain <= 0:
+            # 界面可能已被节流到一分钟才推一次，跨过下班点时自己把话说清楚
+            return "已经到点了 · 今日 %s" % money
+        return "已上班 %s · 还有 %s · %s" % (_dur(worked), _dur(remain), money)
+    if status == "已下班":
+        return "今天下班了 · 今日 %s" % money
+    if status == "未开工":
+        return "还没开工 · 今日 %s" % money
+    if status == "休息":
+        return "今天休息 · 今日 %s" % money
+    return "%s · %s" % (status or TITLE, money)
+
+
+def _tooltip_loop():
+    while not state.quitting:
+        tray = state.tray
+        if tray is not None:
+            try:
+                text = tray_tooltip()
+                if tray.title != text:
+                    tray.title = text
+            except Exception:
+                pass
+        time.sleep(3)
+
+
+def _tray_image():
+    try:
+        from PIL import Image
+
+        img = Image.open(resource_path("app.ico"))
+        img.load()
+        return img.convert("RGBA")
+    except Exception:
+        # 图标读不到也要有托盘，画个纯色圆点顶上
+        try:
+            from PIL import Image, ImageDraw
+
+            img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+            ImageDraw.Draw(img).ellipse((5, 5, 59, 59), fill=(255, 200, 87, 255))
+            return img
+        except Exception:
+            return None
+
+
+# ---------------------------------------------------------------- 窗口动作
+
+def show_window():
+    win = state.window
+    if win is None:
+        return
+    try:
+        win.show()
+    except Exception:
+        pass
+
+
+def quit_app():
+    """真正的退出：先立旗子，再关窗口，closing 事件才不会又把它塞回托盘。"""
+    state.quitting = True
+    win = state.window
+    if win is None:
+        return
+    try:
+        win.destroy()
+    except Exception:
+        pass
+
+
+def start_tray():
+    try:
+        import pystray
+    except Exception:
+        return False
+
+    image = _tray_image()
+    if image is None:
+        return False
+
+    def on_open(icon=None, item=None):
+        show_window()
+
+    def on_toggle_autostart(icon=None, item=None):
+        autostart_set(not autostart_enabled())
+        try:
+            icon.update_menu()
+        except Exception:
+            pass
+
+    def on_check_update(icon=None, item=None):
+        threading.Thread(
+            target=check_update, kwargs={"manual": True}, daemon=True
+        ).start()
+
+    def on_quit(icon=None, item=None):
+        quit_app()
+
+    try:
+        menu = pystray.Menu(
+            pystray.MenuItem("打开主界面", on_open, default=True),
+            pystray.MenuItem(
+                "开机自动启动",
+                on_toggle_autostart,
+                checked=lambda item: autostart_enabled(),
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("检查更新", on_check_update),
+            pystray.MenuItem("退出", on_quit),
+        )
+        tray = pystray.Icon("shangban-guliqi", image, TITLE, menu)
+        tray.run_detached()
+    except Exception:
+        return False
+
+    state.tray = tray
+    state.tray_ready = True
+    threading.Thread(target=_tooltip_loop, daemon=True).start()
+    return True
+
+
+def stop_tray():
+    tray = state.tray
+    state.tray = None
+    state.tray_ready = False
+    if tray is None:
+        return
+    try:
+        tray.stop()
+    except Exception:
+        pass
+
+
+def on_closing():
+    """拦截叉号。
+
+    注意 pywebview 的约定是反的：handler 返回 False 才表示"不许关"
+    （Event.set() 只有在有 handler 返回 False 时才返回 True，winforms 拿到 True 就 Cancel）。
+    所以下面"放行"返回 True，"拦下"返回 False。
+    """
+    if state.quitting:
+        return True  # 走的是托盘里的「退出」，真关
+    if not state.tray_ready:
+        # 托盘没起来就别拦人，否则窗口关不掉也没地方点退出
+        return True
+    win = state.window
+    try:
+        if win is not None:
+            win.hide()
+    except Exception:
+        return True
+    if state.first_hide:
+        state.first_hide = False
+        notify("还在后台跑", "点托盘图标回到界面，右键菜单里有「退出」。")
+    return False
+
+
+# ---------------------------------------------------------------- 检查更新
+
+def _ver_tuple(text):
+    parts = []
+    for seg in str(text).strip().lstrip("vV").split("."):
+        digits = ""
+        for ch in seg:
+            if ch.isdigit():
+                digits += ch
+            else:
+                break
+        if not digits:
+            break
+        parts.append(int(digits))
+    return tuple(parts)
+
+
+def check_update(manual=False):
+    """查 GitHub 上最新一个 Release。失败一律静默：连不上网不该弹框骚扰人。"""
+    if not manual and not load_options().get("check_update", True):
+        return None
+
+    try:
+        req = urllib.request.Request(
+            LATEST_API,
+            headers={
+                "User-Agent": "ShangBanGuLiQi/" + VERSION,
+                "Accept": "application/vnd.github+json",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        tag = str(data.get("tag_name") or "")
+        newer = _ver_tuple(tag) > _ver_tuple(VERSION)
+        info = {
+            "current": VERSION,
+            "tag": tag,
+            "newer": newer,
+            "url": (data.get("html_url") or RELEASES_URL) if newer else "",
+        }
+    except Exception:
+        if manual:
+            notify("检查更新失败", "网络不通，待会儿再点一次。")
+        return None
+
+    state.update = info
+    if manual:
+        if info["newer"]:
+            notify("有新版 " + info["tag"], "打开主界面就能看到下载入口。")
+        else:
+            notify("已是最新版本", "v" + VERSION)
+    return info
+
+
+def _delayed_update_check():
+    time.sleep(4)  # 等窗口先画出来，别跟启动抢带宽
+    check_update()
+
+
+# ---------------------------------------------------------------- 给界面的接口
+
+class Api(object):
+    """界面通过 window.pywebview.api 调这些方法。
+
+    刻意都做成"取数据/写状态"的短操作：所有 UI 动作都发生在界面自己的线程里，
+    只有 show/hide/destroy 从托盘线程发起，而 pywebview 对这三个是线程安全的。
+    """
+
+    def get_settings(self):
+        opts = load_options()
+        return {
+            "version": VERSION,
+            "autostart": autostart_enabled(),
+            "check_update": bool(opts.get("check_update", True)),
+            "update": state.update,
+        }
+
+    def set_autostart(self, enabled):
+        ok = autostart_set(bool(enabled))
+        tray = state.tray
+        if tray is not None:
+            try:
+                tray.update_menu()
+            except Exception:
+                pass
+        return ok
+
+    def set_check_update(self, enabled):
+        opts = load_options()
+        opts["check_update"] = bool(enabled)
+        opts["autostart_initialized"] = True
+        save_options(opts)
+        return bool(enabled)
+
+    def push_status(self, snap):
+        if isinstance(snap, dict):
+            state.status = snap
+            state.status_at = time.time()
+            return True
+        return False
+
+    def poll_update(self):
+        return state.update
+
+    def check_update_now(self):
+        threading.Thread(
+            target=check_update, kwargs={"manual": True}, daemon=True
+        ).start()
+        return True
+
+    def open_url(self, url):
+        text = str(url or "")
+        if text.startswith("https://github.com/") or text.startswith(
+            "https://api.github.com/"
+        ):
+            try:
+                webbrowser.open(text)
+                return True
+            except Exception:
+                return False
+        return False
+
+    def hide_window(self):
+        win = state.window
+        if win is None:
+            return False
+        try:
+            win.hide()
+            return True
+        except Exception:
+            return False
+
+    def quit(self):
+        threading.Thread(target=quit_app, daemon=True).start()
+        return True
+
+
+# ---------------------------------------------------------------- 入口
 
 # WebView2 运行库的固定产品 ID（微软公开，Edge 更新程序用它登记版本）
 _WEBVIEW2_GUID = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
@@ -77,7 +570,7 @@ def alert(text):
     try:
         import ctypes
 
-        ctypes.windll.user32.MessageBoxW(None, text, "上班鼓励器", 0x10)
+        ctypes.windll.user32.MessageBoxW(None, text, TITLE, 0x10)
     except Exception:
         pass
 
@@ -87,9 +580,7 @@ def main():
     try:
         import ctypes
 
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-            "Ewing.ShangBanGuLiQi.Desktop"
-        )
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
     except Exception:
         pass
 
@@ -101,20 +592,26 @@ def main():
             "https://go.microsoft.com/fwlink/p/?LinkId=2124703\n\n"
             "装完再双击本程序即可。"
         )
-        return
+        return 1
 
-    page = resource_path("上班鼓励器.html")
+    autostart_sync()
 
     try:
-        webview.create_window(
-            "上班鼓励器",
-            page,
+        window = webview.create_window(
+            TITLE,
+            resource_path("上班鼓励器.html"),
             width=1180,
             height=900,
             min_size=(380, 620),
-            background_color="#07090d",
+            background_color="#f5f6f8" if system_is_light() else "#07090d",
             text_select=True,
+            js_api=Api(),
         )
+        state.window = window
+        window.events.closing += on_closing
+
+        start_tray()
+        threading.Thread(target=_delayed_update_check, daemon=True).start()
 
         webview.start(
             # 用本地 http 提供页面：file:// 下 localStorage 会被内核判为不安全而不给用
@@ -126,7 +623,12 @@ def main():
         )
     except Exception as exc:  # 兜底，别让窗口一闪就没了
         alert("启动时出错：\n\n" + repr(exc))
+        return 1
+    finally:
+        state.quitting = True
+        stop_tray()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

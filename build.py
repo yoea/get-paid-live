@@ -9,6 +9,8 @@ import os
 import subprocess
 import sys
 
+from version import VERSION
+
 # Windows 的 CI 上 stdout 默认是 cp1252，print 中文会直接抛 UnicodeEncodeError。
 # 这里强制 UTF-8，并透传给 PyInstaller 子进程（它也要打印中文文件名）。
 for _stream in (sys.stdout, sys.stderr):
@@ -25,9 +27,8 @@ NAME = "上班鼓励器"
 # 中文名保留在窗口标题和 exe 的文件属性里，不影响用户看到的名字。
 EXE_BASE = "GetPaidLive"
 
-# 版本号的唯一来源。改这里，exe 文件名、文件属性、Release 标签都跟着走。
+# 版本号来自 version.py（唯一来源）：exe 文件名、文件属性、Release 标签都跟着它走。
 # 界面右下角的签名是 HTML 里的静态文字，打包时会核对（见 check_html_version）。
-VERSION = "1.2.0"
 AUTHOR = "Ethan"
 
 EXE_NAME = "%s-v%s" % (EXE_BASE, VERSION)
@@ -145,7 +146,12 @@ def main():
         "--version-file", version_file,
         # 界面资源随 exe 一起封进去
         "--add-data", NAME + ".html;.",
+        # 托盘图标要在运行时用 pillow 读，所以图标也得进包
+        "--add-data", "app.ico;.",
         "--collect-all", "webview",
+        # pystray 的后端是按平台动态挑的，显式点名免得被静态分析漏掉
+        "--hidden-import", "pystray._win32",
+        "--hidden-import", "PIL.Image",
         "desktop.py",
     ]
     print("正在打包 %s（v%s）……" % (EXE_NAME, VERSION))
