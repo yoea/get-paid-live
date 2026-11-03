@@ -297,9 +297,29 @@ body{
 /* 只动位移不动透明度：万一动画时钟不推进（部分无头/省电环境），面板也不会整块看不见 */
 @keyframes sheetUp{from{transform:translateY(28px)}to{transform:none}}
 .panel-grab{width:38px;height:4px;border-radius:2px;background:var(--grab);margin:10px auto 0;flex:0 0 auto}
-.panel-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px 14px;scrollbar-width:thin}
+/* 标题和标签栏固定在顶部，只有当前这一页的内容滚动 */
+.panel-head{flex:0 0 auto;padding:12px 16px 0}
+.panel-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 14px;scrollbar-width:thin}
 .panel h2{margin:0 0 4px;font-size:16px;font-weight:700}
-.panel .sub{margin:0 0 18px;font-size:12px;color:var(--faint);line-height:1.6}
+.panel .sub{margin:0;font-size:12px;color:var(--faint);line-height:1.6}
+
+/* ---------- 标签页 ---------- */
+.panel-tabs{
+  flex:0 0 auto;display:flex;gap:2px;margin-top:10px;padding:0 12px;
+  border-bottom:1px solid var(--line-soft);overflow-x:auto;scrollbar-width:none;
+}
+.panel-tabs::-webkit-scrollbar{display:none}
+.panel-tabs button{
+  position:relative;flex:0 0 auto;padding:9px 10px 10px;border:0;background:none;
+  color:var(--faint);font:inherit;font-size:13px;cursor:pointer;transition:color .15s;white-space:nowrap;
+}
+.panel-tabs button:hover{color:var(--dim)}
+.panel-tabs button.on{color:var(--text);font-weight:650}
+.panel-tabs button.on::after{
+  content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:var(--gold);
+}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
 
 /* ---------- 首次设置引导 ---------- */
 .setup-tip{
@@ -324,7 +344,10 @@ body{
 .panel.setup .setup-tip{display:flex}
 .panel.setup .req{display:inline-block}
 .panel.setup .sec-note{display:block}
-.panel.setup .adv,               /* 首次只问最关键的几项，商品表/补班日先不打扰 */
+/* 首次设置只有一页，标签栏没必要出现；其余页的内容本来就全是 adv-field，会自动隐藏 */
+.panel.setup .panel-tabs{display:none}
+.panel.setup .tab-pane{display:block}
+/* 首次只问最关键的几项，商品表/补班日/主题那些先不打扰 */
 .panel.setup .field.adv-field{display:none}
 .panel.setup .btn.danger,
 .panel.setup .btn.cancel{display:none}
@@ -333,6 +356,7 @@ body{
 body.firstrun main,body.firstrun .foot{filter:blur(7px);opacity:.28;pointer-events:none;user-select:none}
 .field{margin-bottom:13px}
 .field label{display:block;font-size:12px;color:var(--dim);margin-bottom:6px;letter-spacing:.02em}
+.field label .cnt{margin-left:7px;font-size:11px;color:var(--faint);letter-spacing:0}
 .field .hint{font-size:11px;color:var(--faint);margin-top:5px;line-height:1.55}
 input[type=text],input[type=number],input[type=time],textarea{
   width:100%;background:var(--inset);border:1px solid var(--line);border-radius:10px;
@@ -396,18 +420,6 @@ body.demo-on .tag{color:var(--gold)}
 body.demo-on .clock{color:var(--gold);opacity:1}
 body.demo-on .clock::after{content:" · 演示";font-size:10px;letter-spacing:.08em;opacity:.8}
 input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;cursor:pointer}
-details.adv{border:1px solid var(--line);border-radius:11px;background:var(--inset);margin-bottom:13px}
-details.adv summary{
-  cursor:pointer;padding:11px 12px;font-size:13px;color:var(--dim);list-style:none;
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-}
-details.adv summary::-webkit-details-marker{display:none}
-details.adv summary .s-t{flex:1 1 auto;font-size:13px;color:var(--dim)}
-details.adv summary .s-n{flex:0 0 auto;font-size:11.5px;color:var(--faint)}
-details.adv summary::after{content:"展开";font-size:11.5px;color:var(--faint);flex:0 0 auto}
-details.adv[open] summary::after{content:"收起"}
-details.adv .adv-body{padding:0 12px 12px}
-details.adv .adv-body textarea{margin-bottom:0}
 .panel-actions{
   flex:0 0 auto;display:flex;gap:9px;margin:0;
   padding:11px 16px calc(13px + env(safe-area-inset-bottom));
@@ -428,7 +440,9 @@ details.adv .adv-body textarea{margin-bottom:0}
     width:600px;max-height:86vh;border-radius:18px;border-bottom:1px solid var(--line);
     animation:popIn .18s ease;padding:0;
   }
-  .panel-body{padding:20px 20px 8px}
+  .panel-head{padding:18px 20px 0}
+  .panel-tabs{margin-top:12px;padding:0 14px}
+  .panel-body{padding:10px 20px 8px}
   .panel-actions{padding:12px 20px 16px;border-radius:0 0 18px 18px}
   @keyframes popIn{from{transform:translate(-50%,-47%)}to{transform:translate(-50%,-50%)}}
   .panel-grab{display:none}
@@ -671,12 +685,24 @@ details.adv .adv-body textarea{margin-bottom:0}
   <div class="mask" id="mask"></div>
   <div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="设置">
     <div class="panel-grab"></div>
-    <div class="panel-body">
-    <div class="setup-tip" id="setupTip">
-      <span class="dot"></span>首次使用
+    <div class="panel-head">
+      <div class="setup-tip" id="setupTip">
+        <span class="dot"></span>首次使用
+      </div>
+      <h2 id="panelTitle">设置</h2>
+      <p class="sub" id="panelSub">改完点保存立即生效，只存在你这台设备的浏览器里。</p>
     </div>
-    <h2 id="panelTitle">设置</h2>
-    <p class="sub" id="panelSub">改完点保存立即生效，只存在你这台设备的浏览器里。</p>
+
+    <div class="panel-tabs" id="panelTabs" role="tablist">
+      <button type="button" role="tab" data-pane="work">工时</button>
+      <button type="button" role="tab" data-pane="cal">日历</button>
+      <button type="button" role="tab" data-pane="items">鼓励语</button>
+      <button type="button" role="tab" data-pane="look">外观</button>
+      <button type="button" role="tab" data-pane="desk">桌面</button>
+    </div>
+
+    <div class="panel-body">
+    <div class="tab-pane active" data-pane="work">
 
     <div class="field">
       <label for="fSalary">月薪（建议填到手数）<span class="req" id="salaryReq">必填</span></label>
@@ -720,27 +746,31 @@ details.adv .adv-body textarea{margin-bottom:0}
 
     <div class="sec-note" id="secNote">时间先按 9:00-18:00、午休 1 小时预填好了，跟你不一致就改。节假日、商品表之后在设置里随时能调。</div>
 
+    </div>
+
+    <div class="tab-pane" data-pane="cal">
     <div class="field adv-field">
       <label>法定节假日（一行一个，YYYY-MM-DD）</label>
       <textarea id="fHolidays" spellcheck="false" placeholder="2026-10-01" style="min-height:66px"></textarea>
       <div class="hint">已内置 2026–2027 年安排，可自行增删。留空也安全：会当作没有节假日，只按周末推算，不会出错。</div>
     </div>
 
-    <details class="adv">
-      <summary><span class="s-t">调休补班日</span><span class="s-n">周末要上班的日子</span></summary>
-      <div class="adv-body">
-        <textarea id="fMakeup" spellcheck="false" placeholder="2026-09-27" style="min-height:110px"></textarea>
-      </div>
-    </details>
+    <div class="field adv-field">
+      <label for="fMakeup">调休补班日（一行一个，YYYY-MM-DD）</label>
+      <textarea id="fMakeup" spellcheck="false" placeholder="2026-09-27" style="min-height:96px"></textarea>
+      <div class="hint">周末要上班的日子，填了这两天就算工作日。默认留空——各公司排班不一样，空着只会把补班日当休息日算，不会出错。</div>
+    </div>
+    </div>
 
-    <details class="adv" id="advItems">
-      <summary><span class="s-t">鼓励语商品表</span><span class="s-n" id="advCount">21 件</span></summary>
-      <div class="adv-body">
-        <textarea id="fItems" spellcheck="false" style="min-height:150px"></textarea>
-        <div class="hint">每行「名称,价格」。程序会在今天还没赚到、但收工前赚得到的商品里挑最贵的一件当目标。</div>
-      </div>
-    </details>
+    <div class="tab-pane" data-pane="items">
+    <div class="field adv-field">
+      <label for="fItems">鼓励语商品表<span class="cnt" id="advCount">21 件</span></label>
+      <textarea id="fItems" spellcheck="false" style="min-height:200px"></textarea>
+      <div class="hint">每行「名称,价格」。程序会在今天还没赚到、但收工前赚得到的商品里挑最贵的一件当目标。</div>
+    </div>
+    </div>
 
+    <div class="tab-pane" data-pane="look">
     <div class="field adv-field">
       <label>界面主题</label>
       <div class="seg" id="fTheme" role="group" aria-label="界面主题">
@@ -778,8 +808,10 @@ details.adv .adv-body textarea{margin-bottom:0}
         <div class="hint">只挪时钟，不动工资和工时。设好后时间会从这一刻继续往前跑，进度、已赚、鼓励语都按它重算；留空就是跟随真实时间。</div>
       </div>
     </div>
+    </div>
+
+    <div class="tab-pane" data-pane="desk">
     <div class="field adv-field" id="deskBox" style="display:none">
-      <label>桌面程序</label>
       <div class="switch">
         <div>
           <div class="t">开机自动启动</div>
@@ -789,12 +821,20 @@ details.adv .adv-body textarea{margin-bottom:0}
       </div>
       <div class="switch" style="margin-top:9px">
         <div>
+          <div class="t">到点提醒</div>
+          <div class="d">午休开始、午休结束、下班时各弹一条 Windows 通知，带当时赚了多少。关掉不影响计时。</div>
+        </div>
+        <input type="checkbox" id="fNotify">
+      </div>
+      <div class="switch" style="margin-top:9px">
+        <div>
           <div class="t">启动时检查更新</div>
           <div class="d">只向 GitHub 查一次版本号，不上传任何数据；查到新版会在界面顶部提示。</div>
         </div>
         <input type="checkbox" id="fCheckUpdate">
       </div>
       <div class="hint" id="deskHint">点叉号不会退出，程序缩到右下角托盘继续计时；右键托盘图标可以退出。</div>
+    </div>
     </div>
     </div>
 
@@ -1514,6 +1554,7 @@ var Guliqi = (function () {
   /* ---------- 主渲染 ---------- */
   function frame(now) {
     var snap = engine.snapshot(now, cfg.demo);
+    trackPhase(snap);            // 跨过午休/下班时点就发一条系统通知
 
     // 演示生效时把标签和时钟标成金色，免得把假时间当成真的
     var demoOn = !!(cfg.demo && cfg.demo_offset);
@@ -1615,6 +1656,7 @@ var Guliqi = (function () {
     if (raf !== null) cancelAnimationFrame(raf);
     cache = {};
     calKey = '';
+    lastPhase = '';        // 重算一开始（含刚改完作息）就把当前时点当成起点，不补发提醒
     engine = new G.Engine(cfg);
     running = true;
     loop();
@@ -1648,6 +1690,37 @@ var Guliqi = (function () {
   var weekBtns = Array.prototype.slice.call(document.querySelectorAll('#fWeek button'));
   var draftWeek = cfg.work_weekdays.slice();
   var firstRun = false;          // true = 首次进入，必须先填完才能进主界面
+
+  /* ---------- 标签页 ----------
+     面板内容已经长到一屏放不下，改成按主题分页；每页各自滚动，标题和标签栏固定。 */
+  var TABS = ['work', 'cal', 'items', 'look', 'desk'];
+  var curTab = 'work';
+
+  function paintTabs() {
+    var btns = $('panelTabs').querySelectorAll('button');
+    for (var i = 0; i < btns.length; i++) {
+      var on = btns[i].getAttribute('data-pane') === curTab;
+      btns[i].classList.toggle('on', on);
+      btns[i].setAttribute('aria-selected', on ? 'true' : 'false');
+    }
+    var panes = panel.querySelectorAll('.tab-pane');
+    for (var j = 0; j < panes.length; j++) {
+      panes[j].classList.toggle('active', panes[j].getAttribute('data-pane') === curTab);
+    }
+  }
+
+  function switchTab(name) {
+    if (TABS.indexOf(name) < 0) return;
+    curTab = name;
+    paintTabs();
+    var pb = panel.querySelector('.panel-body');
+    if (pb) pb.scrollTop = 0;
+  }
+
+  $('panelTabs').addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('button') : null;
+    if (b) switchTab(b.getAttribute('data-pane'));
+  });
 
   function paintWeek() {
     weekBtns.forEach(function (b) {
@@ -1776,9 +1849,8 @@ var Guliqi = (function () {
     renderDemoChips();
     syncDemoUI(false);
     loadDeskOpts();          // 桌面版：刷新开机启动 / 检查更新的真实状态
+    switchTab('work');       // 每次打开都从第一页开始，别停在上次那一页
     sheet.classList.add('open');
-    var pb = panel.querySelector('.panel-body');
-    if (pb) pb.scrollTop = 0;
     if (firstRun) setTimeout(function () { try { $('fSalary').focus(); } catch (e) {} }, 260);
   }
 
@@ -1876,7 +1948,13 @@ var Guliqi = (function () {
   $('btnSave').addEventListener('click', function () {
     if (!validate()) {
       var first = panel.querySelector('.err.on');
-      if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (first) {
+        // 出错的项可能在别的标签页上，先跳过去再滚到它
+        var pane = first.closest ? first.closest('.tab-pane') : null;
+        var name = pane ? pane.getAttribute('data-pane') : '';
+        if (name && name !== curTab) switchTab(name);
+        first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
       return;
     }
     var pay = parseFloat(String($('fSalary').value).replace(/[,，\s]/g, ''));
@@ -1984,6 +2062,77 @@ var Guliqi = (function () {
     desk.send('push_status', statusPayload());
   }
 
+  /* ---------- 到点提醒 ----------
+     界面负责判断"刚跨过哪个时点"，弹通知交给桌面层（Python 侧调系统托盘气泡）。
+     在浏览器里直接打开时没有桥，这段就是空转。 */
+  var NOTICE_KEY = 'guliqi.notices.v1';
+  var noticeLog = loadNoticeLog();
+  var lastPhase = '';
+
+  function loadNoticeLog() {
+    try {
+      var raw = localStorage.getItem(NOTICE_KEY);
+      var data = raw ? JSON.parse(raw) : null;
+      return (data && typeof data === 'object') ? data : {};
+    } catch (e) { return {}; }
+  }
+
+  function dayStamp(d) {
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  // 同一天里同一种提醒只弹一次；顺便把往天的记录扔掉，别越攒越多
+  function claimNotice(kind, now) {
+    var day = dayStamp(now);
+    var key = day + '|' + kind;
+    if (noticeLog[key]) return false;
+    var fresh = {};
+    fresh[key] = 1;
+    for (var k in noticeLog) {
+      if (k.indexOf(day + '|') === 0) fresh[k] = 1;
+    }
+    noticeLog = fresh;
+    try { localStorage.setItem(NOTICE_KEY, JSON.stringify(noticeLog)); } catch (e) {}
+    return true;
+  }
+
+  function phaseOf(snap) {
+    if (!snap.isWorkday) return 'rest';
+    if (snap.status === '未开工') return 'before';
+    if (snap.status === '小憩') return 'lunch';
+    if (snap.status === '已下班') return 'off';
+    return 'work';
+  }
+
+  function trackPhase(snap) {
+    var phase = phaseOf(snap);
+    if (!lastPhase) {            // 刚启动时不做补发，只记住当前在哪一段
+      lastPhase = phase;
+      return;
+    }
+    if (phase === lastPhase) return;
+
+    var from = lastPhase;
+    lastPhase = phase;
+
+    // 演示模式的"现在"是假的，不拿它打扰人
+    if (cfg.demo) return;
+
+    var kind = '';
+    if (phase === 'lunch' && from === 'work') kind = 'lunch';
+    else if (phase === 'work' && from === 'lunch') kind = 'lunch_end';
+    else if (phase === 'off' && (from === 'work' || from === 'lunch')) kind = 'off';
+    if (!kind) return;
+    if (!claimNotice(kind, snap.now)) return;
+
+    desk.send('notify_event', {
+      kind: kind,
+      earned: snap.earned,
+      remain: snap.remaining,
+      masked: !!cfg.display.hide_money
+    });
+  }
+
   /* ---------- 更新提示 ---------- */
   var updateUrl = '';
   var updateTag = '';
@@ -2021,6 +2170,7 @@ var Guliqi = (function () {
     $('deskBox').style.display = '';
     $('fAutostart').checked = !!opts.autostart;
     $('fCheckUpdate').checked = !!opts.check_update;
+    $('fNotify').checked = opts.notify_schedule !== false;
     refs.note.innerHTML = '数据只存在本机<br>关闭窗口仍在后台计时 · C 设置 · H 藏钱';
     if (opts.update) showUpdate(opts.update);
   }
@@ -2035,6 +2185,7 @@ var Guliqi = (function () {
     if (!desk.ready()) return;
     desk.send('set_autostart', !!$('fAutostart').checked);
     desk.send('set_check_update', !!$('fCheckUpdate').checked);
+    desk.send('set_notify_schedule', !!$('fNotify').checked);
   }
 
   /* ---------- 快捷键 ---------- */

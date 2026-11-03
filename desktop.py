@@ -7,6 +7,7 @@
 - 开机自动启动（写 HKCU 的 Run 项，首次运行默认就注册）
 - 系统托盘图标：悬停显示已上班 / 还剩 / 已赚，左键回到主界面，右键有退出
 - 点窗口叉号不退出，而是隐藏到托盘
+- 到午休、午休结束、下班时发一条 Windows 原生通知（可在设置里关掉）
 - 每次启动查一次 GitHub Releases，有新版本就在界面上提一条
 
 配置（工资、作息）仍由 HTML 存在 localStorage；这里只额外存一份桌面选项。
@@ -151,6 +152,8 @@ def autostart_sync():
     if not opts.get("autostart_initialized"):
         opts["autostart_initialized"] = True
         opts.setdefault("check_update", True)
+        # 到点提醒默认开着：这是这个程序最主要的"被需要"时刻
+        opts.setdefault("notify_schedule", True)
         save_options(opts)
         autostart_set(True)
         return
@@ -172,20 +175,53 @@ class _State(object):
         self.status_at = 0.0
         self.update = None        # 查到的版本信息，供界面轮询取走
         self.first_hide = True
+        self.notices = {}         # 到点提醒的去重表：{(kind, 日期): True}
 
 
 state = _State()
 
 
 def notify(title, message):
-    """托盘气泡提示。系统关了通知就静默失败，不影响主流程。"""
+    """走系统托盘的气泡（Windows 会把它归到通知中心）。系统关了通知就静默失败。"""
     tray = state.tray
     if tray is None:
-        return
+        return False
     try:
         tray.notify(message, title)
+        return True
     except Exception:
-        pass
+        return False
+
+
+# ---------------------------------------------------------------- 到点提醒
+
+def notify_enabled():
+    return bool(load_options().get("notify_schedule", True))
+
+
+def _money(value, masked):
+    if masked:
+        return "****"
+    try:
+        return "￥{:,.2f}".format(float(value or 0))
+    except (TypeError, ValueError):
+        return "￥0.00"
+
+
+def schedule_message(kind, data):
+    """把界面推来的数值翻成一句人话。返回 (标题, 正文)，认不出来的类型返回 None。"""
+    d = data if isinstance(data, dict) else {}
+    masked = bool(d.get("masked"))
+    earned = _money(d.get("earned"), masked)
+    remain = _money(d.get("remain"), masked)
+
+    if kind == "lunch":
+        return "午休时间到了", "先去吃饭 · 上午已经赚了 %s，下午还有 %s" % (earned, remain)
+    if kind == "lunch_end":
+        return "午休结束", "回来啦 · 今天还差 %s 就收工" % remain
+    if kind == "off":
+        return "下班了", "今天一共 %s · 收工，别再惦记工作" % earned
+    return None
 
 
 # ---------------------------------------------------------------- 托盘文案
@@ -457,6 +493,7 @@ class Api(object):
             "version": VERSION,
             "autostart": autostart_enabled(),
             "check_update": bool(opts.get("check_update", True)),
+            "notify_schedule": bool(opts.get("notify_schedule", True)),
             "update": state.update,
         }
 
@@ -476,6 +513,32 @@ class Api(object):
         opts["autostart_initialized"] = True
         save_options(opts)
         return bool(enabled)
+
+    def set_notify_schedule(self, enabled):
+        opts = load_options()
+        opts["notify_schedule"] = bool(enabled)
+        opts["autostart_initialized"] = True
+        save_options(opts)
+        return bool(enabled)
+
+    def notify_event(self, payload):
+        """界面在跨过午休/下班时点调这里。界面只报"发生了什么"，措辞交给这边，
+        这样通知文案和托盘悬停的格式是一致的。"""
+        if not notify_enabled():
+            return False
+        data = payload if isinstance(payload, dict) else {}
+        kind = str(data.get("kind") or "")
+        text = schedule_message(kind, data)
+        if text is None:
+            return False
+        # 双保险：界面已按天去重，这里再挡一次进程内的重复调用
+        key = (kind, time.strftime("%Y-%m-%d"))
+        if state.notices.get(key):
+            return False
+        ok = notify(text[0], text[1])
+        if ok:
+            state.notices[key] = True
+        return ok
 
     def push_status(self, snap):
         if isinstance(snap, dict):

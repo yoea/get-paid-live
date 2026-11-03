@@ -44,7 +44,7 @@ VERSION_TEMPLATE = """VSVersionInfo(
     StringFileInfo([
       StringTable('080404B0', [
         StringStruct('CompanyName', '%(author)s'),
-        StringStruct('FileDescription', '上班鼓励器 - 实时显示上班赚了多少钱'),
+        StringStruct('FileDescription', '上班鼓励器 · 桌面版'),
         StringStruct('FileVersion', '%(vs)s'),
         StringStruct('InternalName', '%(internal)s'),
         StringStruct('LegalCopyright', 'Copyright (C) 2026 %(author)s'),
