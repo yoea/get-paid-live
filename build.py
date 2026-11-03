@@ -20,12 +20,17 @@ for _stream in (sys.stdout, sys.stderr):
 HERE = os.path.dirname(os.path.abspath(__file__))
 NAME = "上班鼓励器"
 
+# exe 文件名必须是 ASCII：GitHub Release 的附件名只保留 [A-Za-z0-9._-]，
+# 中文字符会被静默删掉（"上班鼓励器-v1.1.0.exe" 会变成 "-v1.1.0.exe"）。
+# 中文名保留在窗口标题和 exe 的文件属性里，不影响用户看到的名字。
+EXE_BASE = "GetPaidLive"
+
 # 版本号的唯一来源。改这里，exe 文件名、文件属性、Release 标签都跟着走。
 # 界面右下角的签名是 HTML 里的静态文字，打包时会核对（见 check_html_version）。
 VERSION = "1.1.0"
 AUTHOR = "Ethan"
 
-EXE_NAME = "%s-v%s" % (NAME, VERSION)
+EXE_NAME = "%s-v%s" % (EXE_BASE, VERSION)
 INTERNAL_NAME = "ShangBanGuLiQi"
 
 VERSION_TEMPLATE = """VSVersionInfo(

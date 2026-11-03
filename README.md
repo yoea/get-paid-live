@@ -32,9 +32,11 @@ Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行
 
 ## 下载
 
-到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `上班鼓励器-v1.1.0.exe`，双击运行。
+到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.1.0.exe`，双击运行。
 
-单文件约 13 MB，不需要安装 Python、浏览器或任何运行库。exe 文件名和右键「属性 → 详细信息」里都带版本号，方便确认拿到的是哪一版。
+单文件约 13 MB，不需要安装 Python、浏览器或任何运行库。文件名和右键「属性 → 详细信息」里都带版本号，方便确认拿到的是哪一版。
+
+> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.1.0.exe` 会变成 `-v1.1.0.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
 
 ## 自己打包
 
@@ -54,7 +56,7 @@ git push origin v1.2.0
 打包exe.bat
 ```
 
-生成 `dist\上班鼓励器-v1.1.0.exe`。第一次运行需要联网装 pywebview / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
+生成 `dist\GetPaidLive-v1.1.0.exe`。第一次运行需要联网装 pywebview / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
 
 或者手动：
 
