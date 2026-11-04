@@ -67,6 +67,18 @@ html,body{margin:0;padding:0}
 /* 禁双击缩放：manipulation 只关掉双击放大，保留双指缩放（不伤无障碍） */
 html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{touch-action:manipulation}
+/* ---------- 外层滚动条：藏掉，但不禁用 ----------
+   滚轮、触控板、PageUp/PageDown、空格、拖动滚动条区域以外的一切滚动方式都照旧。
+   这么做的实际收益有两个，不是纯审美：
+   1) 滚动条占的那十几像素会让「内容够不够高」在切换时整页左右跳一下，窗口从
+      刚好放下拉到差一点点时尤其明显；
+   2) window.innerWidth 是含滚动条宽度的，固定定位的粒子画布按它铺满会比视口
+      宽出一截 —— 于是窗口一变小就横竖两条滚动条互相把对方撑出来。
+   横向一律 clip：内容怎么都该在自己的宽度内重排，漏出来的零头切掉就好。
+   clip 不创建滚动容器（hidden 会），也不会把 fixed 子孙的包含块改成 html。 */
+html{scrollbar-width:none;-ms-overflow-style:none;overflow-x:clip}
+html::-webkit-scrollbar,body::-webkit-scrollbar{width:0;height:0;display:none}
+body{overscroll-behavior-y:none}
 body{
   background:
     radial-gradient(900px 520px at 12% -12%,rgba(255,200,87,.075),transparent 62%),
@@ -116,6 +128,11 @@ body{
 .icon-btn:hover{color:var(--text);border-color:var(--line-hover)}
 .icon-btn:active{transform:scale(.94)}
 .icon-btn svg{width:16px;height:16px}
+/* 顶栏一键切主题：当前浅色显示月亮（点了变深），当前深色显示太阳。
+   图标只表示"点下去会发生什么"，跟顶栏其它动作型按钮一致。 */
+#btnTheme .i-sun{display:none}
+:root[data-theme=dark] #btnTheme .i-moon{display:none}
+:root[data-theme=dark] #btnTheme .i-sun{display:block}
 
 /* ---------- 栅格 ---------- */
 .grid{display:grid;gap:13px;grid-template-columns:1fr;flex:1;align-content:start}
@@ -548,11 +565,61 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
 @media(min-width:1100px){
   .hero-money{font-size:74px}
 }
-@media(max-width:360px){
+/* 窗口窄的时候先让品牌副标退场：380 宽（程序的最小宽度）下顶栏塞着
+   状态徽标 + 两个图标按钮，再留「EARN · LIVE」就会把名字挤到换行外溢。 */
+@media(max-width:480px){
   .tag{display:none}
+}
+@media(max-width:360px){
   .name{font-size:16px}
   .stat .v{font-size:13px}
 }
+/* ================= 尺寸自适应 =================
+   这一组必须放在样式表末尾：同权重下靠后的生效，才盖得住上面按窗口断点
+   写死的 px 字号（比如 1100px 以上那句 74px）。
+
+   数字字号原来跟 vw（窗口宽）走，等于"窗口越宽字越大"，可两栏之后真正装字的
+   只有 520px 的卡片。窗口 1180 时 62~74px 的金额把卡片顶破，只能靠
+   word-break:break-all 把金额拆成两行——这是最难读的排版事故。
+   改成跟卡片自己的宽度走（cqw）：两栏、单栏、拉宽、拉窄都是同一个比例。
+   container-type 只加在 .hero 上，不影响其它任何布局计算；老内核没有容器
+   查询单位时，前面按断点写的那几条继续生效，不会掉成无样式。 */
+@supports (container-type:inline-size){
+  .hero{container-type:inline-size}
+  .hero-money{font-size:clamp(30px,13cqw,66px)}
+  .hero-money.masked{font-size:clamp(26px,10.5cqw,52px)}
+  .cur{font-size:clamp(17px,5.4cqw,26px)}
+  .duo .v{font-size:clamp(13px,4.6cqw,19px)}
+}
+
+/* 中宽单栏（640–899）：四个统计块排成一行。纵向省下一整行（矮窗口受益），
+   横向也不再是一张 800px 宽、里头只有几个小数字的空卡片。 */
+@media(min-width:640px) and (max-width:899px){
+  .stats{grid-template-columns:repeat(4,1fr)}
+  .stat .v{font-size:15px}
+}
+
+/* 窗口矮的时候先压纵向留白：620 高是程序允许的最小高度，
+   这个高度下别让人一开窗就得先滚一下才看得见进度条。 */
+@media(max-height:700px){
+  body{padding-top:12px}
+  .card{padding-top:14px;padding-bottom:15px}
+  .hero{padding-top:15px;padding-bottom:16px}
+  .hero-top{padding-bottom:9px}
+  .money-line{margin:12px 0 7px}
+  .msg{margin-top:12px;padding-top:8px;padding-bottom:8px}
+  .duo{margin-top:12px}
+  .grid,.col-a,.col-b{gap:11px}
+  .foot{padding-top:8px}
+}
+
+/* 面板内部滚动不往背后传：贴到底继续滚轮时，背景页面不该跟着动（那种"错位感"） */
+.panel-body{overscroll-behavior:contain}
+/* 备注弹窗在矮窗口里可能比视口还高，让它自己滚，别把标题顶到屏幕外 */
+.notepop .box{max-height:calc(100dvh - 36px);overflow:auto}
+/* 面板打开时把页面锁住：滚轮只作用于面板，不带动背后的仪表盘 */
+html.lock{overflow:hidden}
+
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
 }
@@ -668,6 +735,15 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
     </div>
     <div class="top-r">
       <span class="badge" id="badge" data-s="idle">未开工</span>
+      <button class="icon-btn" id="btnTheme" type="button" aria-label="切换到深色主题" title="切换到深色主题">
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.6 14.8A8.7 8.7 0 0 1 9.2 3.4 8.7 8.7 0 1 0 20.6 14.8z"></path>
+        </svg>
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"></path>
+        </svg>
+      </button>
       <button class="icon-btn" id="btnCfg" aria-label="设置">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
           <circle cx="12" cy="12" r="3.2"></circle>
@@ -795,7 +871,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:#2fbf82;flex:0 0 auto;c
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.2</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.3</button>
       <span class="ver-msg" id="verMsg"></span>
     </div>
   </footer>
@@ -1622,6 +1698,16 @@ var Guliqi = (function () {
     var meta = document.querySelector('meta[name=theme-color]');
     if (meta) meta.setAttribute('content', dark ? '#07090d' : '#f5f6f8');
     root.style.colorScheme = dark ? 'dark' : 'light';
+    paintThemeBtn(dark);
+  }
+
+  // 顶栏那个图标的提示跟着实际明暗走（图标本身靠 CSS 的 [data-theme] 切）
+  function paintThemeBtn(dark) {
+    var b = $('btnTheme');
+    if (!b) return;
+    var tip = dark ? '切换到浅色主题' : '切换到深色主题';
+    b.setAttribute('title', tip);
+    b.setAttribute('aria-label', tip);
   }
 
   function paintThemeSeg() {
@@ -1807,6 +1893,14 @@ var Guliqi = (function () {
   /* ---------- 日期备注 ---------- */
   var noteDate = '';
 
+  /* 有浮层（设置面板 / 备注弹窗）时锁住背后的页面。
+     不然滚轮在遮罩上继续滚，背后那页会跟着滑走，关掉浮层后位置全变 —— 
+     看上去就像"内容错位"。按当前有几个浮层统一算一次，先开后关都不会漏。 */
+  function syncLock() {
+    var on = sheet.classList.contains('open') || $('notePop').classList.contains('open');
+    document.documentElement.classList.toggle('lock', on);
+  }
+
   function openNote(iso) {
     noteDate = iso;
     var body = notes[iso] || '';
@@ -1816,11 +1910,13 @@ var Guliqi = (function () {
     $('noteDel').style.display = body ? '' : 'none';
     paintNoteCnt();
     $('notePop').classList.add('open');
+    syncLock();
     setTimeout(function () { try { $('noteBody').focus(); } catch (e) {} }, 60);
   }
 
   function closeNote() {
     $('notePop').classList.remove('open');
+    syncLock();
   }
 
   function paintNoteCnt() {
@@ -2196,6 +2292,7 @@ var Guliqi = (function () {
     loadDeskOpts();          // 桌面版：刷新开机启动 / 检查更新的真实状态
     switchTab('work');       // 每次打开都从第一页开始，别停在上次那一页
     sheet.classList.add('open');
+    syncLock();
     if (firstRun) setTimeout(function () { try { $('fSalary').focus(); } catch (e) {} }, 260);
   }
 
@@ -2204,9 +2301,25 @@ var Guliqi = (function () {
     // 面板里试过的主题没保存，关掉就退回已保存的那个
     if (draftTheme !== cfg.theme) { draftTheme = cfg.theme; applyTheme(cfg.theme); }
     sheet.classList.remove('open');
+    syncLock();
   }
 
   $('btnCfg').addEventListener('click', function () { if (!firstRun) openSheet(false); });
+
+  // 顶栏一键切主题：浅 / 深之间来回切，直接落盘，不用进设置面板。
+  // 当前是"跟随系统"时按此刻实际看到的明暗切到对面——点一次就一定有变化，
+  // 否则在深色系统下点"深色→深色"会以为按钮坏了。切完就不再跟随系统。
+  $('btnTheme').addEventListener('click', function () {
+    if (firstRun) return;        // 首次设置没填完，别把空配置写进库
+    var nowDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var next = nowDark ? 'light' : 'dark';
+    cfg.theme = next;
+    draftTheme = next;           // 面板里的草稿也跟上，免得关闭时把主题退回去
+    G.saveCfg(cfg);              // 本地缓存（首帧用），权威数据写 SQLite
+    desk.send('save_cfg', cfg);
+    applyTheme(next);
+    paintThemeSeg();
+  });
   $('mask').addEventListener('click', closeSheet);
   $('btnCancel').addEventListener('click', closeSheet);
 
@@ -2327,6 +2440,7 @@ var Guliqi = (function () {
     panel.classList.remove('setup');
     document.body.classList.remove('firstrun');
     sheet.classList.remove('open');
+    syncLock();
     start();
     refs.hideTxt.textContent = cfg.display.hide_money ? '显示金额' : '隐藏金额';
   });
@@ -2663,7 +2777,12 @@ var Guliqi = (function () {
       };
     }
     function resize() {
-      W = window.innerWidth; H = window.innerHeight;
+      /* clientWidth/Height 才是"看得见的那块"，innerWidth 含滚动条宽度：
+         用 innerWidth 铺画布会宽出十几像素，恰好逼出一条横向滚动条。 */
+      W = document.documentElement.clientWidth || window.innerWidth;
+      H = document.documentElement.clientHeight || window.innerHeight;
+      // 拖到另一块屏幕上 DPR 会变，顺手跟上，别让粒子糊掉
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -2702,11 +2821,23 @@ var Guliqi = (function () {
       ctx.clearRect(0, 0, W, H);
     }
 
-    window.addEventListener('resize', function () {
-      resize();
-      // 尺寸变了重撒粒子，避免全挤在旧区域
-      for (var i = 0; i < N; i++) ps[i] = spawn(W, H);
-    });
+    /* 拖边框改尺寸时 resize 事件一帧能来好几次，而写 canvas.width 等于
+       重新分配整块位图并清空画面 —— 一次拖拽里这么干十几遍，看起来就是闪。
+       合并到下一次 rAF 里做，一个渲染帧最多重排一次；尺寸没真变就什么都不做。 */
+    var rszId = 0;
+    function onResize() {
+      if (rszId) return;
+      rszId = requestAnimationFrame(function () {
+        rszId = 0;
+        var w = document.documentElement.clientWidth || window.innerWidth;
+        var h = document.documentElement.clientHeight || window.innerHeight;
+        if (w === W && h === H && dpr === Math.min(window.devicePixelRatio || 1, 2)) return;
+        resize();
+        // 尺寸变了重撒粒子，避免全挤在旧区域
+        for (var k = 0; k < N; k++) ps[k] = spawn(W, H);
+      });
+    }
+    window.addEventListener('resize', onResize);
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) stop(); else start();
     });
