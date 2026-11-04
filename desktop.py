@@ -151,6 +151,331 @@ def autostart_sync():
         autostart_set(True)
 
 
+# ---------------------------------------------------------------- 单实例
+# 同一时刻只允许一份在跑。再双击时按版本号决定谁留下：
+#   跑着的那份 >= 自己（同版本或更新）→ 把它的窗口叫到前面，自己立刻退出
+#   跑着的那份 <  自己（自己更新）    → 请它退出，自己接手
+#
+# 全靠命名的内核对象，不落文件、不占端口，进程一死内核自动回收：
+#   Local\ShangBanGuLiQi.single   互斥量：名字在就说明有一份活着
+#   Local\ShangBanGuLiQi.info     共享内存：对方把版本 / pid / 窗口句柄写在里面
+#   Local\ShangBanGuLiQi.quit     事件：上面的新版用它请下面对旧版体面退出
+#
+# 1.4.3 及更早的版本不认这套协议（既不建互斥量，也没有 info），对它们只能靠
+# 窗口标题认人，等一小会儿之后直接结束进程。配置写 SQLite 是单条语句立刻落盘，
+# 强杀不会丢已经保存的东西。
+
+MUTEX_NAME = "Local\\ShangBanGuLiQi.single"
+INFO_NAME = "Local\\ShangBanGuLiQi.info"
+QUIT_NAME = "Local\\ShangBanGuLiQi.quit"
+
+_ERR_ALREADY_EXISTS = 183
+_SW_SHOW = 5
+_SW_RESTORE = 9
+_PROCESS_TERMINATE = 0x0001
+_SYNCHRONIZE = 0x00100000
+_EVENT_MODIFY_STATE = 0x0002
+_FILE_MAP_WRITE = 0x0002
+_FILE_MAP_READ = 0x0004
+_PAGE_READWRITE = 0x04
+_INFINITE = 0xFFFFFFFF
+
+_state_inst = {}      # 本进程持有的内核对象；进程退出时全部自动释放
+_win32 = None
+
+
+def _win():
+    """把用到的 Win32 调用声明一遍（只做一次）。
+
+    必须显式写 restype/argtypes：ctypes 默认把返回值当 C int，64 位下句柄的
+    高位会被截掉，后面每个调用都会拿着一个残缺的句柄失败。
+    """
+    global _win32
+    if _win32 is not None:
+        return _win32
+
+    import ctypes
+    from ctypes import wintypes as w
+
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    u = ctypes.WinDLL("user32", use_last_error=True)
+
+    k.CreateMutexW.argtypes = (w.LPVOID, w.BOOL, w.LPCWSTR)
+    k.CreateMutexW.restype = w.HANDLE
+    k.CreateFileMappingW.argtypes = (w.HANDLE, w.LPVOID, w.DWORD, w.DWORD, w.DWORD, w.LPCWSTR)
+    k.CreateFileMappingW.restype = w.HANDLE
+    k.OpenFileMappingW.argtypes = (w.DWORD, w.BOOL, w.LPCWSTR)
+    k.OpenFileMappingW.restype = w.HANDLE
+    k.MapViewOfFile.argtypes = (w.HANDLE, w.DWORD, w.DWORD, w.DWORD, ctypes.c_size_t)
+    k.MapViewOfFile.restype = w.LPVOID
+    k.UnmapViewOfFile.argtypes = (w.LPVOID,)
+    k.CreateEventW.argtypes = (w.LPVOID, w.BOOL, w.BOOL, w.LPCWSTR)
+    k.CreateEventW.restype = w.HANDLE
+    k.OpenEventW.argtypes = (w.DWORD, w.BOOL, w.LPCWSTR)
+    k.OpenEventW.restype = w.HANDLE
+    k.SetEvent.argtypes = (w.HANDLE,)
+    k.SetEvent.restype = w.BOOL
+    k.CloseHandle.argtypes = (w.HANDLE,)
+    k.OpenProcess.argtypes = (w.DWORD, w.BOOL, w.DWORD)
+    k.OpenProcess.restype = w.HANDLE
+    k.WaitForSingleObject.argtypes = (w.HANDLE, w.DWORD)
+    k.WaitForSingleObject.restype = w.DWORD
+    k.TerminateProcess.argtypes = (w.HANDLE, w.UINT)
+    k.TerminateProcess.restype = w.BOOL
+    u.FindWindowW.argtypes = (w.LPCWSTR, w.LPCWSTR)
+    u.FindWindowW.restype = w.HWND
+    u.FindWindowExW.argtypes = (w.HWND, w.HWND, w.LPCWSTR, w.LPCWSTR)
+    u.FindWindowExW.restype = w.HWND
+    u.GetWindowThreadProcessId.argtypes = (w.HWND, ctypes.POINTER(w.DWORD))
+    u.GetWindowThreadProcessId.restype = w.DWORD
+    u.ShowWindow.argtypes = (w.HWND, ctypes.c_int)
+    u.IsIconic.argtypes = (w.HWND,)
+    u.IsIconic.restype = w.BOOL
+    u.BringWindowToTop.argtypes = (w.HWND,)
+    u.SetForegroundWindow.argtypes = (w.HWND,)
+
+    _win32 = {"ct": ctypes, "w": w, "k": k, "u": u}
+    return _win32
+
+
+def _window_pids(exclude_self=True):
+    """标题是「上班鼓励器」的顶层窗口 [(hwnd, pid), ...]。
+
+    FindWindowExW 带上前一个句柄就是「接着往后找同标题的」，比 EnumWindows
+    加回调省事，也不用担心回调被 GC 掉。隐藏到托盘的窗口也能找到。
+    """
+    A = _win()
+    u, k = A["u"], A["k"]
+    ct, w = A["ct"], A["w"]
+    me = os.getpid()
+    out = []
+    hwnd = u.FindWindowW(None, TITLE)
+    while hwnd:
+        pid = w.DWORD(0)
+        u.GetWindowThreadProcessId(hwnd, ct.byref(pid))
+        if pid.value and (not exclude_self or pid.value != me):
+            out.append((hwnd, pid.value))
+        hwnd = u.FindWindowExW(None, hwnd, None, TITLE)
+    return out
+
+
+def _own_hwnd():
+    A = _win()
+    u, k = A["u"], A["k"]
+    ct, w = A["ct"], A["w"]
+    me = os.getpid()
+    hwnd = u.FindWindowW(None, TITLE)
+    while hwnd:
+        pid = w.DWORD(0)
+        u.GetWindowThreadProcessId(hwnd, ct.byref(pid))
+        if pid.value == me:
+            return hwnd
+        hwnd = u.FindWindowExW(None, hwnd, None, TITLE)
+    return 0
+
+
+def _read_info():
+    """读对方写在共享内存里的 {ver, pid, hwnd}；没有或者读不出来返回 None。"""
+    try:
+        A = _win()
+        k, ct = A["k"], A["ct"]
+        h = k.OpenFileMappingW(_FILE_MAP_READ, False, INFO_NAME)
+        if not h:
+            return None
+        try:
+            addr = k.MapViewOfFile(h, _FILE_MAP_READ, 0, 0, 0)
+            if not addr:
+                return None
+            try:
+                raw = ct.string_at(addr, 512).split(b"\x00")[0]
+                if not raw:
+                    return None
+                data = json.loads(raw.decode("utf-8", "replace"))
+            finally:
+                k.UnmapViewOfFile(addr)
+        finally:
+            k.CloseHandle(h)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _publish(version, hwnd=0):
+    """把自己的版本 / pid / 窗口句柄写进共享内存。
+
+    窗口还没建出来时先写 hwnd=0 —— 版本号才是判断谁该留下的依据，
+    窗口句柄只是用来"叫到前面"，晚一点补上不影响仲裁。
+    """
+    try:
+        A = _win()
+        k, ct = A["k"], A["ct"]
+        addr = _state_inst.get("addr")
+        if not addr:
+            h = k.CreateFileMappingW(None, None, _PAGE_READWRITE, 0, 4096, INFO_NAME)
+            if not h:
+                return
+            addr = k.MapViewOfFile(h, _FILE_MAP_WRITE | _FILE_MAP_READ, 0, 0, 4096)
+            if not addr:
+                k.CloseHandle(h)
+                return
+            _state_inst["map"] = h
+            _state_inst["addr"] = addr
+        raw = json.dumps(
+            {"ver": version, "pid": os.getpid(), "hwnd": int(hwnd or 0)}
+        ).encode("utf-8")
+        ct.memset(addr, 0, 256)
+        ct.memmove(addr, raw, len(raw))
+    except Exception:
+        pass
+
+
+def _publish_when_ready():
+    """窗口是 pywebview 异步建出来的，建好之后把句柄补进共享内存。"""
+
+    def run():
+        for _ in range(150):
+            hwnd = _own_hwnd()
+            if hwnd:
+                _publish(VERSION, hwnd)
+                return
+            time.sleep(0.1)
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+def _activate(hwnd):
+    """把跑着的那一份叫到前面：它可能藏在托盘里、也可能最小化了。"""
+    if not hwnd:
+        return
+    try:
+        A = _win()
+        u = A["u"]
+        if u.IsIconic(hwnd):
+            u.ShowWindow(hwnd, _SW_RESTORE)
+        else:
+            u.ShowWindow(hwnd, _SW_SHOW)
+        u.BringWindowToTop(hwnd)
+        if not u.SetForegroundWindow(hwnd):
+            # 后台进程抢前台会被系统拦下，换未文档化的老接口再试一次
+            try:
+                u.SwitchToThisWindow(hwnd, True)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _evict(peers, graceful):
+    """请对方退出。
+
+    graceful=True（对方是认协议的新版本）：先发退出信号，让它走正常退出流程，
+    托盘图标也收得干净。
+    graceful=False（对方是 1.4.3 及更早）：它不会响应，等一小会儿直接结束进程。
+    """
+    A = _win()
+    k = A["k"]
+    if graceful:
+        ev = k.OpenEventW(_EVENT_MODIFY_STATE, False, QUIT_NAME)
+        if ev:
+            k.SetEvent(ev)
+            k.CloseHandle(ev)
+
+    procs = []
+    for _hwnd, pid in peers:
+        h = k.OpenProcess(_SYNCHRONIZE | _PROCESS_TERMINATE, False, pid)
+        if h:
+            procs.append(h)
+    deadline = time.time() + (2.5 if graceful else 0.35)
+    while procs and time.time() < deadline:
+        if all(k.WaitForSingleObject(h, 0) == 0 for h in procs):
+            break
+        time.sleep(0.08)
+    for h in procs:
+        if k.WaitForSingleObject(h, 0) != 0:
+            k.TerminateProcess(h, 0)
+            k.WaitForSingleObject(h, 1200)
+        k.CloseHandle(h)
+
+
+def single_instance_gate(version=VERSION):
+    """启动前的仲裁。True = 继续启动；False = 已经交给别的那份，本进程该退出。
+
+    任何一步出错都放行：宁可多开一个，也不能让人双击了打不开。
+    """
+    try:
+        A = _win()
+        k, ct = A["k"], A["ct"]
+        mutex = k.CreateMutexW(None, True, MUTEX_NAME)
+        exists = ct.get_last_error() == _ERR_ALREADY_EXISTS
+        _state_inst["mutex"] = mutex
+
+        peers = _window_pids()
+        if mutex and not exists and not peers:
+            _publish(version)          # 抢到位置：先登记版本，窗口建好再补句柄
+            return True
+
+        info = _read_info()
+        if info is None and exists and not peers:
+            # 另一份刚抢到互斥量、窗口还没出来：等它把版本写进共享内存
+            for _ in range(25):
+                time.sleep(0.08)
+                info = _read_info()
+                if info:
+                    break
+                peers = _window_pids()
+                if peers:
+                    break
+
+        peer_ver = str((info or {}).get("ver") or "")
+        if peer_ver:
+            mine, theirs = _ver_tuple(version), _ver_tuple(peer_ver)
+            replace = mine > theirs
+        else:
+            # 读不到版本 = 1.4.3 及更早，一定比现在这份旧
+            replace = True
+
+        if replace:
+            _evict(peers, graceful=bool(peer_ver))
+            _publish(version)
+            return True
+
+        # 同版本或对方更新：把它的窗口叫出来，自己安静退场
+        hwnd = int((info or {}).get("hwnd") or 0)
+        if not hwnd and peers:
+            hwnd = peers[0][0]
+        _activate(hwnd)
+        return False
+    except Exception:
+        return True
+
+
+def _start_quit_watcher():
+    """等新版发来「让位」信号，收到就走正常退出（托盘、通知都收干净）。"""
+    try:
+        A = _win()
+        k = A["k"]
+        ev = k.CreateEventW(None, False, False, QUIT_NAME)
+        if not ev:
+            return
+    except Exception:
+        return
+    _state_inst["quit"] = ev
+
+    def run():
+        # 窗口还没建好就收到信号也不能立刻销毁，等它建好再说
+        for _ in range(400):
+            if state.window is not None:
+                break
+            time.sleep(0.05)
+        try:
+            k.WaitForSingleObject(ev, _INFINITE)
+        except Exception:
+            return
+        quit_app()
+
+    threading.Thread(target=run, daemon=True).start()
+
+
 # ---------------------------------------------------------------- 运行状态
 
 class _State(object):
@@ -689,6 +1014,11 @@ def main():
     except Exception:
         pass
 
+    # 先做单实例仲裁：已经有旧的一份在跑就把它换掉，同版本/更新的就把它的窗口
+    # 叫到前面。这一步放最前面，免得第二个实例白弹一堆检查框。
+    if not single_instance_gate():
+        return 0
+
     if not webview2_ready():
         alert(
             "启动失败：这台电脑缺少 Microsoft Edge WebView2 运行库。\n\n"
@@ -715,6 +1045,9 @@ def main():
         )
         state.window = window
         window.events.closing += on_closing
+
+        _start_quit_watcher()      # 认「让位」信号，新版本要接手时走正常退出
+        _publish_when_ready()      # 窗口建好后把句柄补进共享内存
 
         start_tray()
         threading.Thread(target=_delayed_update_check, daemon=True).start()
