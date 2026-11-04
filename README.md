@@ -12,7 +12,7 @@ Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行
 
 - **今日已赚**：四位小数实时累加，午休时段冻结不涨
 - **当前赚钱速度**：每秒多少钱
-- **工时进度**：百分比 + 进度条 + 已工作 / 总工作小时
+- **工时进度**：百分比 + 进度条 + 已工作 / 总工作小时；进度条按「上班→下班」的真实时间刻度画，午休那一段按实际时长占位（1 小时就是一天的 1/9），午休时绿色正好停在这一段的左边
 - **本月累计、本年已赚、时薪、今日满勤**
 - **距发薪倒计时**：填每月几号几点到账，主卡底部一直显示还有多久；碰上周末或法定节假日自动往前挪到最近的工作日
 - **当月日历点阵**：每天都画出来，上班日、休息日、节假日、今天各一色；可以左右翻月，点任意日期写一条不超过 100 字的备注（比如「今天加班」「调休」）
@@ -104,13 +104,13 @@ Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行
 
 ## 下载
 
-到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.4.5.exe`，双击运行。
+到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.4.6.exe`，双击运行。
 
 单文件约 20 MB，不需要安装 Python、浏览器或任何运行库。文件名和右键「属性 → 详细信息」里都带版本号，方便确认拿到的是哪一版。
 
 exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的 Windows 环境里现编译，从源码到产物这条链路可查（见下面的[打包与发布](#打包与发布)）。
 
-> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.4.5.exe` 会变成 `-v1.4.5.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
+> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.4.6.exe` 会变成 `-v1.4.6.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
 
 ## 打包与发布
 
@@ -121,17 +121,17 @@ exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的
 版本号只有一个来源：`version.py` 里的 `VERSION`。改它，exe 文件名、文件属性、界面右下角的签名核对、Release 标签、查更新时的比对基准全都跟着走。
 
 ```bash
-# 1. 改 version.py：VERSION = "1.4.5"
-# 2. 顺手改 上班鼓励器.html 里的 <span id="verNum">v1.4.5</span>
-# 3. 在 .github/release-notes.md 里加一段「## v1.4.5」——记住插在最上面，
+# 1. 改 version.py：VERSION = "1.4.6"
+# 2. 顺手改 上班鼓励器.html 里的 <span id="verNum">v1.4.6</span>
+# 3. 在 .github/release-notes.md 里加一段「## v1.4.6」——记住插在最上面，
 #    那个文件是 Release 正文，最新的必须排第一，往下才是历史版本
 # 4. 提交
-git add -A && git commit -m "v1.4.5"
+git add -A && git commit -m "v1.4.6"
 git push
 
 # 5. 打同名标签推上去，剩下的交给 CI
-git tag -a v1.4.5 -m "v1.4.5"
-git push origin v1.4.5
+git tag -a v1.4.6 -m "v1.4.6"
+git push origin v1.4.6
 ```
 
 推完标签后大概 1–2 分钟，[Releases](https://github.com/yoea/get-paid-live/releases) 上就多一个带 exe 的版本。
@@ -143,13 +143,13 @@ git push origin v1.4.5
 | 检出代码 | `windows-latest` 干净环境 |
 | 安装 Python | 3.12，`cache: pip` 按 `requirements.txt` 缓存依赖 |
 | 装依赖 | pywebview（框架）+ pyinstaller（打包器），只装在构建机上 |
-| 校验版本号 | 标签 `v1.4.5` 必须等于 `version.py` 里的 `VERSION`，不一致直接失败 |
+| 校验版本号 | 标签 `v1.4.6` 必须等于 `version.py` 里的 `VERSION`，不一致直接失败 |
 | 打包 | 跑 `python build.py`，产出单文件 exe |
 | 校验产物 | 文件名里必须含版本号、体积必须大于 5 MB，否则判定打包缺东西 |
 | 存构建产物 | 上传到 Actions 的 Artifacts，保留 7 天 |
 | 发 Release | 用 `gh release` 创建版本并附上 exe，正文整段取自 `.github/release-notes.md` |
 
-**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.6、exe 里却是 1.4.5」这种发出去才发现的问题。
+**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.7、exe 里却是 1.4.6」这种发出去才发现的问题。
 
 Release 正文的排序也是约定：`.github/release-notes.md` 里最上面永远是最新版本，新段落往下压一层旧的，长期不变的功能说明固定在最后一节。CI 原样使用，不做任何重排。
 
@@ -165,7 +165,7 @@ CI 挂了或者想离线验证，本地也能打，约 24 秒：
 打包exe.bat
 ```
 
-生成 `dist\GetPaidLive-v1.4.5.exe`。第一次运行会联网装 pywebview / pystray / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
+生成 `dist\GetPaidLive-v1.4.6.exe`。第一次运行会联网装 pywebview / pystray / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
 
 或者手动执行等价的三条：
 
@@ -218,6 +218,7 @@ python -m venv .venv-build
 | 本月累计 | 本月已过的工作日按满勤补算 + 今日已赚（只算已赚到的，不预支未来） |
 | 本年已赚 | 1 月至上月满勤 + 本月累计 |
 | 下一个发薪日 | 每月「X 号 HH:MM」，落在非工作日就往前挪到最近的工作日（可以跨月，最多退 20 天）；当月没有这一天（31 号遇上 30 天的月份）按当月末算；当天已过点则取下月 |
+| 进度条 | 按「上班→下班」的时间刻度画（含午休，午休按真实时长占位）；右侧那个百分比是净工时完成度（已工作 ÷ 总工作），两个口径不同，各看各的 |
 
 所以每日金额会随当月工作日数浮动：同样 8000 月薪，21 个工作日的月份日薪 380.95，23 个工作日的月份日薪 347.83。这比「月薪 ÷ 21.75」更贴近你当月的实际付出。
 
@@ -265,4 +266,4 @@ assets/screenshot.png         README 用的界面截图
 
 ---
 
-作者 **Ethan** · v1.4.5 · MIT
+作者 **Ethan** · v1.4.6 · MIT

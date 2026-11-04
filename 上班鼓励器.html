@@ -240,8 +240,21 @@ body{
 .prog-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
 .prog-head .t{font-size:12.5px;color:var(--dim);letter-spacing:.02em}
 .prog-head .p{font-size:21px;font-weight:750;color:var(--mint);letter-spacing:-.01em}
-.bar{height:11px;border-radius:999px;background:var(--raise);border:1px solid var(--line);overflow:hidden}
+.bar{position:relative;height:11px;border-radius:999px;background:var(--raise);border:1px solid var(--line);overflow:hidden}
 .bar>i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#2fbf82,#4ade9f 42%,#ffc857 100%);box-shadow:0 0 12px rgba(74,222,159,.3)}
+/* 午休：轴按"当天时间"做刻度，午休段就按真实时长占位（1 小时 / 9 小时 ≈ 11%），
+   left 与 width 都由 JS 按上下班和午休时间算，这里不写死。
+   底色用 --surface（深色比轨道更深、浅色比轨道更白），条纹叠在它上面 ⇒ 整段不透明，
+   能把底下的进度填充盖住，午休那一段永远显示为"跳过"。 */
+.bar-break{
+  position:absolute;top:0;bottom:0;width:0;min-width:3px;border-radius:2px;
+  background:
+    repeating-linear-gradient(135deg, var(--gold-line-2) 0 1.5px, transparent 1.5px 4.5px),
+    var(--surface);
+  box-shadow:inset 0 0 0 1px var(--gold-line-2);
+  box-sizing:border-box;
+  pointer-events:auto;      /* 只为让 title 提示能弹出来 */
+}
 .prog-foot{display:flex;justify-content:space-between;gap:10px;margin-top:9px;font-size:12px;color:var(--dim);flex-wrap:wrap}
 .prog-foot b{color:var(--text);font-weight:600}
 
@@ -828,7 +841,7 @@ html.lock{overflow:hidden}
           <span class="t">今日工时进度</span>
           <span class="p" id="pct">0.0%</span>
         </div>
-        <div class="bar"><i id="barFill"></i></div>
+        <div class="bar"><i id="barFill"></i><span class="bar-break" id="barBreak"></span></div>
         <div class="prog-foot">
           <span>已工作 <b id="hWorked">0.00</b> / 总工作 <b id="hTotal">0.00</b> 小时</span>
           <span id="leftNote">--</span>
@@ -893,7 +906,7 @@ html.lock{overflow:hidden}
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.5</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.6</button>
       <span class="ver-msg" id="verMsg"></span>
     </div>
   </footer>
@@ -1642,10 +1655,22 @@ var Guliqi = (function () {
     // 发薪日跟着"现在"走：演示模式的假时钟也会算出对应的下一个发薪时刻
     var payday = this.nextPayday(now);
 
+    /* 时间轴进度：从上班到现在在整段工时里走过的比例（含午休）。
+       进度条按它画，午休才能在轴上有真实长度（1 小时就是 1/9）。
+       跟上面的 progress（净工时完成度）是两个口径，别混：
+       progress 回答"干完多少活"，spanProgress 回答"今天过到哪"。 */
+    var elapsedMin = 0;
+    if (workday) {
+      elapsedMin = (now.getTime() - startDt.getTime()) / 60000;
+      elapsedMin = Math.max(0, Math.min(elapsedMin, this.dayMinutes));
+    }
+    var spanProgress = this.dayMinutes ? elapsedMin / this.dayMinutes : 0;
+
     return {
       now: now, today: today, status: status, isWorkday: workday,
       worked: worked, remaining: remaining, totalSec: totalSec,
-      progress: progress, earned: earned, monthTotal: monthTotal,
+      progress: progress, spanProgress: spanProgress,
+      earned: earned, monthTotal: monthTotal,
       yearEarned: this.yearEarned(today, monthTotal),
       dailyPay: daily, hourly: hourly, perSec: perSec, speed: speed,
       monthDays: monthDays, doneDays: doneDays, msg: msg,
@@ -1743,7 +1768,7 @@ var Guliqi = (function () {
     msg: $('msg'), msgBody: $('msgBody'),
     duoWorked: $('duoWorked'), duoLeft: $('duoLeft'),
     duoIn: $('duoIn'), duoOut: $('duoOut'),
-    pct: $('pct'), barFill: $('barFill'),
+    pct: $('pct'), barFill: $('barFill'), barBreak: $('barBreak'),
     hWorked: $('hWorked'), hTotal: $('hTotal'), leftNote: $('leftNote'),
     monthTotal: $('monthTotal'), yearEarned: $('yearEarned'),
     hourly: $('hourly'), dailyPay: $('dailyPay'),
@@ -1860,6 +1885,33 @@ var Guliqi = (function () {
     if (diff === 0) return '今天 ' + hm;
     if (diff === 1) return '明天 ' + hm;
     return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hm;
+  }
+
+  /* ---------- 进度轴上的午休 ----------
+     轴用"当天时间"当刻度（09:00 → 18:00），午休段就按它的真实时长占位：
+     午休 1 小时、一天跨度 9 小时，它就占 1/9，跟眼睛看到的时长一致。
+     填充也跟着这条轴走（spanProgress，含午休），午休那一段被不透明的斜纹盖住，
+     所以视觉上就是"绿条停在午休左边，午休不赚钱，13:00 再从右边接着走"。
+     右边那个百分比仍是净工时完成度（跟"已工作 / 总工作"对得上），两者口径不同。 */
+  function paintBarBreak() {
+    var box = refs.barBreak;
+    if (!box) return;
+    var e = engine;
+    var on = !!(e && e.breakLen > 0 && e.netMinutes > 0 && e.dayMinutes > 0);
+    if (cache.breakOn !== on) {
+      cache.breakOn = on;
+      box.style.display = on ? '' : 'none';
+    }
+    if (!on) return;
+    var left = (e.breakMin - e.startMin) / e.dayMinutes;
+    var wide = e.breakLen / e.dayMinutes;
+    if (cache.breakL !== left || cache.breakW !== wide) {
+      cache.breakL = left;
+      cache.breakW = wide;
+      box.style.left = (left * 100).toFixed(3) + '%';
+      box.style.width = (wide * 100).toFixed(3) + '%';
+      box.title = '午休 ' + hhmmOf(e.breakMin) + ' – ' + hhmmOf(e.breakEndMin);
+    }
   }
 
   var STATUS_KEY = {
@@ -2109,14 +2161,14 @@ var Guliqi = (function () {
     }
     setHTML('msg', renderMsg(snap.msg));
 
-    // 进度
-    var pct = (snap.progress * 100);
-    setText('pct', pct.toFixed(1) + '%');
-    var w = Math.max(0, Math.min(100, pct));
-    if (cache.barW !== w) {
-      cache.barW = w;
-      refs.barFill.style.width = w.toFixed(2) + '%';
+    // 进度：数字是净工时完成度，条形长度是"今天过到哪"（含午休，见 spanProgress）
+    setText('pct', (snap.progress * 100).toFixed(1) + '%');
+    var p = Math.max(0, Math.min(1, snap.spanProgress));
+    if (cache.barP !== p) {
+      cache.barP = p;
+      refs.barFill.style.width = (p * 100).toFixed(3) + '%';
     }
+    paintBarBreak();
     setText('hWorked', (snap.worked / 3600).toFixed(2));
     setText('hTotal', engine.netHours.toFixed(2));
     setText('leftNote', '距下班 ' + G.fmtHMSms(snap.remaining));
