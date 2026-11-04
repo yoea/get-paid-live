@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07090d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>上班鼓励器</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23090c12'/%3E%3Crect x='7' y='9' width='4' height='14' rx='2' fill='%23ffc857'/%3E%3Crect x='14' y='13' width='12' height='3' rx='1.5' fill='%234ade9f'/%3E%3Crect x='14' y='19' width='8' height='3' rx='1.5' fill='%234ade9f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+<script>
+/* 主题必须在第一帧之前定下来，否则深色用户每次启动都会看见一瞬白底。
+   所以这里直接读 localStorage 的原始值，不经过 Guliqi.normalize（那时引擎还没加载）。 */
+(function () {
+  var mode = 'system';
+  try {
+    var s = localStorage.getItem('guliqi.cfg.v1');
+    if (s) {
+      var o = JSON.parse(s);
+      if (o && (o.theme === 'light' || o.theme === 'dark')) mode = o.theme;
+    }
+  } catch (e) {}
+  var dark = mode === 'dark'
+    || (mode === 'system' && (!window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches));
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+})();
+</script>
+</head>
+<body>
+<canvas id="bgFx" aria-hidden="true"></canvas>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <span class="mark"></span>
+      <span class="name">上班鼓励器</span>
+      <span class="tag">EARN · LIVE</span>
+    </div>
+    <div class="top-r">
+      <span class="badge" id="badge" data-s="idle">未开工</span>
+      <button class="icon-btn" id="btnTheme" type="button" aria-label="切换到深色主题" title="切换到深色主题">
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.6 14.8A8.7 8.7 0 0 1 9.2 3.4 8.7 8.7 0 1 0 20.6 14.8z"></path>
+        </svg>
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"></path>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btnCfg" aria-label="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+          <circle cx="12" cy="12" r="3.2"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="update-bar" id="updateBar">
+    <span class="dot"></span>
+    <span class="txt" id="updateTxt"></span>
+    <button class="link" id="btnUpdateGo">去下载</button>
+    <button class="x" id="btnUpdateClose" aria-label="忽略这次更新">✕</button>
+  </div>
+
+  <main class="grid">
+    <div class="col-a">
+      <section class="card hero">
+        <div class="hero-top">
+          <div class="when">
+            <span class="wd" id="weekday">--</span>
+            <span class="date" id="date">--</span>
+          </div>
+          <span class="clock" id="clock">--:--:--.---</span>
+        </div>
+
+        <div class="money-line">
+          <span class="cur" id="cur">￥</span>
+          <span class="hero-money" id="earned">0.0000</span>
+        </div>
+
+        <div class="hero-sub">
+          <span>赚钱速度 <b id="speed">0.0000</b> 元/秒</span>
+          <span class="sep">·</span>
+          <span id="phaseNote">今天共 8.00 小时计薪</span>
+        </div>
+
+        <div class="msg" id="msg" data-k="plain">
+          <span class="acc"></span>
+          <span class="body" id="msgBody">今天也在赚钱，稳住</span>
+        </div>
+
+        <div class="duo">
+          <div>
+            <div class="k">已上班</div>
+            <div class="v" id="duoWorked">00:00:00.000</div>
+            <div class="s" id="duoIn">--</div>
+          </div>
+          <div>
+            <div class="k">距下班</div>
+            <div class="v" id="duoLeft">00:00:00.000</div>
+            <div class="s" id="duoOut">--</div>
+          </div>
+        </div>
+
+        <div class="payday" id="paydayRow" style="display:none">
+          <span class="k">距发薪</span>
+          <b class="v" id="paydayLeft">--</b>
+          <span class="s" id="paydayWhen">--</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="prog-head">
+          <span class="t">今日工时进度</span>
+          <span class="p" id="pct">0.0%</span>
+        </div>
+        <div class="bar"><i id="barFill"></i><span class="bar-break" id="barBreak"></span></div>
+      </section>
+    </div>
+
+    <div class="col-b">
+      <section class="stats">
+        <div class="stat s-month">
+          <div class="k"><i style="background:#8892a6"></i>本月累计</div>
+          <div class="v" id="monthTotal">￥0.0000</div>
+        </div>
+        <div class="stat s-year">
+          <div class="k"><i style="background:#ffc857"></i>本年已赚</div>
+          <div class="v" id="yearEarned">￥0.0000</div>
+        </div>
+        <div class="stat s-hour">
+          <div class="k"><i style="background:#4cc9f0"></i>时薪</div>
+          <div class="v" id="hourly">￥0.0000</div>
+        </div>
+        <div class="stat s-full">
+          <div class="k"><i style="background:#4ade9f"></i>今日满勤</div>
+          <div class="v" id="dailyPay">￥0.0000</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="cal-head">
+          <div class="cal-left">
+            <button class="cal-nav" id="calPrev" aria-label="上个月" title="上个月">‹</button>
+            <span class="cal-title" id="calTitle"><b>--</b> 月</span>
+            <button class="cal-nav" id="calNext" aria-label="下个月" title="下个月">›</button>
+            <button class="cal-back" id="calToday" style="display:none">回到本月</button>
+          </div>
+          <span class="cal-num">第 <b id="dayNo">0</b> / <b id="dayTotal">0</b> 天</span>
+        </div>
+        <div class="week">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div class="days" id="days"></div>
+        <div class="legend">
+          <span><i style="background:rgba(74,222,159,.5)"></i>已过</span>
+          <span><i style="background:rgba(255,255,255,.14)"></i>未到</span>
+          <span><i style="background:rgba(70,92,133,.75)"></i>周末</span>
+          <span><i style="background:rgba(157,123,239,.7)"></i>法定节假日</span>
+          <span><i style="background:linear-gradient(135deg,#ffe08a,#ff9e5e)"></i>今天</span>
+          <span><i style="background:var(--gold);border-radius:50%"></i>有备注</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <button class="btn-ghost" id="btnHide">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" id="eyeIcon">
+        <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      <span id="hideTxt">隐藏金额</span>
+    </button>
+    <div class="foot-r">
+      <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
+      <span class="dot">·</span>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.9</button>
+    </div>
+  </footer>
+</div>
+
+<!-- 全局 toast：查更新结果等一次性提示 -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- ================= 设置面板 ================= -->
+<div class="sheet" id="sheet">
+  <div class="mask" id="mask"></div>
+  <div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="设置">
+    <div class="panel-grab"></div>
+    <div class="panel-head">
+      <div class="setup-tip" id="setupTip">
+        <span class="dot"></span>首次使用
+      </div>
+      <h2 id="panelTitle">设置</h2>
+      <p class="sub" id="panelSub">改完点保存立即生效，只存在这台电脑的数据库里。</p>
+      <span class="setup-ver" id="setupVer"></span>
+    </div>
+
+    <div class="panel-tabs" id="panelTabs" role="tablist">
+      <button type="button" role="tab" data-pane="work">工时</button>
+      <button type="button" role="tab" data-pane="cal">日历</button>
+      <button type="button" role="tab" data-pane="items">鼓励语</button>
+      <button type="button" role="tab" data-pane="look">外观</button>
+      <button type="button" role="tab" data-pane="desk">桌面</button>
+      <button type="button" role="tab" data-pane="about">关于</button>
+    </div>
+
+    <div class="panel-body">
+    <div class="tab-pane active" data-pane="work">
+
+    <div class="field">
+      <label for="fSalary">月薪（建议填到手数）<span class="req" id="salaryReq">必填</span></label>
+      <input type="number" id="fSalary" step="100" min="0" inputmode="decimal" placeholder="例如 8000">
+      <div class="err" id="salaryErr"></div>
+      <div class="hint">填税后实际到手，算出来的钱才是你真能花的。各月到手不一样就取去年全年到手 ÷ 12。</div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="fStart">上班时间</label>
+        <input type="time" id="fStart">
+      </div>
+      <div class="field">
+        <label for="fEnd">下班时间</label>
+        <input type="time" id="fEnd">
+      </div>
+    </div>
+    <div class="err" id="timeErr"></div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="fBreakS">午休开始（可留空）</label>
+        <input type="time" id="fBreakS">
+      </div>
+      <div class="field">
+        <label for="fBreakE">午休结束（可留空）</label>
+        <input type="time" id="fBreakE">
+      </div>
+    </div>
+    <div class="err" id="breakErr"></div>
+
+    <div class="field">
+      <label>每周上班的日子</label>
+      <div class="wd" id="fWeek">
+        <button data-w="1">一</button><button data-w="2">二</button><button data-w="3">三</button>
+        <button data-w="4">四</button><button data-w="5">五</button><button data-w="6">六</button>
+        <button data-w="7">日</button>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="fPayDay">发薪日（每月几号，可留空）</label>
+        <input type="number" id="fPayDay" min="1" max="31" step="1" inputmode="numeric" placeholder="5">
+      </div>
+      <div class="field">
+        <label for="fPayTime">到账时间</label>
+        <input type="time" id="fPayTime">
+      </div>
+    </div>
+    <div class="err" id="payErr"></div>
+
+    <div class="sec-note" id="secNote">时间先按 9:00-18:00、午休 1 小时、每月 5 号 17:00 发薪预填好了，跟你不一致就改。节假日、商品表之后在设置里随时能调。</div>
+
+    </div>
+
+    <div class="tab-pane" data-pane="cal">
+    <div class="field adv-field">
+      <label>法定节假日（一行一个，YYYY-MM-DD）</label>
+      <textarea id="fHolidays" spellcheck="false" placeholder="2026-10-01"></textarea>
+      <div class="hint">已内置 2026–2027 年安排，可自行增删。留空也安全：会当作没有节假日，只按周末推算，不会出错。</div>
+    </div>
+
+    <div class="field adv-field">
+      <label for="fMakeup">调休补班日（一行一个，YYYY-MM-DD）</label>
+      <textarea id="fMakeup" spellcheck="false" placeholder="2026-09-27"></textarea>
+      <div class="hint">周末要上班的日子，填了这两天就算工作日。默认留空——各公司排班不一样，空着只会把补班日当休息日算，不会出错。</div>
+    </div>
+    </div>
+
+    <div class="tab-pane" data-pane="items">
+    <div class="field adv-field">
+      <label for="fItems">鼓励语商品表<span class="cnt" id="advCount">21 件</span></label>
+      <textarea id="fItems" spellcheck="false" style="min-height:200px"></textarea>
+      <div class="hint">每行「名称,价格」。程序会在今天还没赚到、但收工前赚得到的商品里挑最贵的一件当目标。</div>
+    </div>
+    </div>
+
+    <div class="tab-pane" data-pane="look">
+    <div class="field adv-field">
+      <label>界面主题</label>
+      <div class="seg" id="fTheme" role="group" aria-label="界面主题">
+        <button type="button" data-theme-opt="system">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2"></rect><path d="M8.5 20.5h7M12 16.5v4"></path></svg>
+          跟随系统
+        </button>
+        <button type="button" data-theme-opt="light">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"></path></svg>
+          浅色
+        </button>
+        <button type="button" data-theme-opt="dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 1 1 9.2 3.5a6.9 6.9 0 0 0 11.3 11.3z"></path></svg>
+          深色
+        </button>
+      </div>
+      <div class="hint">默认跟随系统。系统在白天/夜间之间切换时，界面会自己跟着变；点一下立刻预览，点保存才记住。</div>
+    </div>
+
+    <div class="field adv-field">
+      <div class="switch">
+        <div>
+          <div class="t">演示模式</div>
+          <div class="d">忽略周末和节假日，按工作日演算，方便休息日预览效果</div>
+        </div>
+        <input type="checkbox" id="fDemo">
+      </div>
+      <div id="demoTimeBox" class="demo-box" style="display:none">
+        <label for="fDemoTime">演示时间（把"现在"挪到几点）</label>
+        <div class="row2">
+          <input type="time" id="fDemoTime">
+          <button type="button" class="btn-mini" id="btnDemoClear">跟随真实</button>
+        </div>
+        <div class="demo-chips" id="demoChips"></div>
+        <div class="hint">只挪时钟，不动工资和工时。设好后时间会从这一刻继续往前跑，进度、已赚、鼓励语都按它重算；留空就是跟随真实时间。</div>
+      </div>
+    </div>
+    </div>
+
+    <div class="tab-pane" data-pane="desk">
+    <div class="field adv-field" id="deskBox" style="display:none">
+      <div class="switch">
+        <div>
+          <div class="t">开机自动启动</div>
+          <div class="d">登录 Windows 后自动打开，直接进主界面。第一次运行时已经默认打开。</div>
+        </div>
+        <input type="checkbox" id="fAutostart">
+      </div>
+      <div class="switch" style="margin-top:9px">
+        <div>
+          <div class="t">到点提醒</div>
+          <div class="d">午休开始、午休结束、下班时各弹一条 Windows 通知，带当时赚了多少。关掉不影响计时。</div>
+        </div>
+        <input type="checkbox" id="fNotify">
+      </div>
+      <div class="switch" style="margin-top:9px">
+        <div>
+          <div class="t">启动时检查更新</div>
+          <div class="d">只向 GitHub 查一次版本号，不上传任何数据；查到新版会在界面顶部提示。</div>
+        </div>
+        <input type="checkbox" id="fCheckUpdate">
+      </div>
+      <div class="hint" id="deskHint">点叉号不会退出，程序缩到右下角托盘继续计时；右键托盘图标可以退出。</div>
+    </div>
+    </div>
+
+    <div class="tab-pane" data-pane="about">
+    <div class="about-hero">
+      <span class="ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.2 1.9"></path>
+        </svg>
+      </span>
+      <div>
+        <div class="nm">上班鼓励器</div>
+        <div class="ds">把月薪拆成每秒都在跳的数字 <span id="aboutVer">v--</span></div>
+      </div>
+    </div>
+
+    <div class="about">
+      <div class="about-row">
+        <span class="k">源码</span>
+        <span class="v">
+          <button type="button" class="about-link" data-url="https://github.com/yoea/get-paid-live">github.com/yoea/get-paid-live</button>
+        </span>
+      </div>
+      <div class="about-row">
+        <span class="k">许可</span>
+        <span class="v">
+          <button type="button" class="about-link" data-url="https://github.com/yoea/get-paid-live/blob/main/LICENSE">MIT License</button>
+          <span style="color:var(--faint)"> © 2026 Ethan</span>
+        </span>
+      </div>
+      <div class="about-row">
+        <span class="k">隐私</span>
+        <span class="v">
+          <button type="button" class="about-link" data-url="https://github.com/yoea/get-paid-live/blob/main/docs/PRIVACY.md">数据只存本机，不上传</button>
+        </span>
+      </div>
+      <div class="about-row">
+        <span class="k">反馈</span>
+        <span class="v">
+          <button type="button" class="about-link" data-url="https://github.com/yoea/get-paid-live/issues">提交 issue</button>
+        </span>
+      </div>
+      <div class="about-row">
+        <span class="k">更新</span>
+        <span class="v about-ver">
+          <b id="aboutCur">v--</b>
+          <button type="button" class="about-act" id="aboutUpdate" disabled>检查中…</button>
+        </span>
+      </div>
+      <div class="about-row">
+        <span class="k">数据</span>
+        <span class="v">
+          <button type="button" class="about-path" id="aboutDir" title="点击打开数据目录">%LOCALAPPDATA%\ShangBanGuLiQi\</button>
+        </span>
+      </div>
+    </div>
+
+    <p class="about-note">
+      MIT 许可：可以随便用、改、分发，包括商用，保留版权声明即可；软件按「原样」提供，不附带任何担保。
+    </p>
+    </div>
+    </div>
+
+    <div class="panel-actions">
+      <button class="btn danger" id="btnReset">重设</button>
+      <button class="btn cancel" id="btnCancel">取消</button>
+      <button class="btn primary" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 日期备注 ================= -->
+<div class="notepop" id="notePop">
+  <div class="mask" id="noteMask"></div>
+  <div class="box" role="dialog" aria-modal="true" aria-label="日期备注">
+    <h3 id="noteTitle">--</h3>
+    <p class="sub">给这天记一句话，100 字以内。存在本机的 data.db 里，不上传。</p>
+    <textarea id="noteBody" maxlength="100" spellcheck="false" placeholder="比如：今天发工资 / 需求评审过了一版"></textarea>
+    <div class="cnt" id="noteCnt">0 / 100</div>
+    <div class="acts">
+      <button class="btn danger" id="noteDel" style="display:none">删除</button>
+      <button class="btn cancel" id="noteCancel">取消</button>
+      <button class="btn primary" id="noteSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+
+<script src="ui.js"></script>
+</body>
+</html>

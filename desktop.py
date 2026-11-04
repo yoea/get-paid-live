@@ -2,6 +2,8 @@
 """上班鼓励器 · 桌面外壳
 
 界面由同目录的 上班鼓励器.html 提供（Windows 自带的 WebView2 渲染，不打包浏览器内核）。
+那份 html 是 merge.py 从 src/ 合出来的生成物；界面源码在 src/（index.html / app.css /
+engine.js / ui.js），改界面去改 src/。
 这一层只管系统集成：
 
 - 开机自动启动（写 HKCU 的 Run 项，首次运行默认就注册）

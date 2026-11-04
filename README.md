@@ -110,13 +110,13 @@ Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行
 
 ## 下载
 
-到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.4.8.exe`，双击运行。
+到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.4.9.exe`，双击运行。
 
 单文件约 20 MB，不需要安装 Python、浏览器或任何运行库。文件名和右键「属性 → 详细信息」里都带版本号，方便确认拿到的是哪一版。
 
 exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的 Windows 环境里现编译，从源码到产物这条链路可查（见下面的[打包与发布](#打包与发布)）。
 
-> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.4.8.exe` 会变成 `-v1.4.8.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
+> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.4.9.exe` 会变成 `-v1.4.9.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
 
 ## 打包与发布
 
@@ -127,17 +127,17 @@ exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的
 版本号只有一个来源：`version.py` 里的 `VERSION`。改它，exe 文件名、文件属性、界面右下角的签名核对、Release 标签、查更新时的比对基准全都跟着走。
 
 ```bash
-# 1. 改 version.py：VERSION = "1.4.8"
-# 2. 顺手改 上班鼓励器.html 里的 <span id="verNum">v1.4.8</span>
-# 3. 在 .github/release-notes.md 里加一段「## v1.4.8」——记住插在最上面，
+# 1. 改 version.py：VERSION = "1.4.9"
+# 2. 顺手改 src/index.html 里的 <span id="verNum">v1.4.9</span>，然后跑一次 python merge.py
+# 3. 在 .github/release-notes.md 里加一段「## v1.4.9」——记住插在最上面，
 #    那个文件是 Release 正文，最新的必须排第一，往下才是历史版本
 # 4. 提交
-git add -A && git commit -m "v1.4.8"
+git add -A && git commit -m "v1.4.9"
 git push
 
 # 5. 打同名标签推上去，剩下的交给 CI
-git tag -a v1.4.8 -m "v1.4.8"
-git push origin v1.4.8
+git tag -a v1.4.9 -m "v1.4.9"
+git push origin v1.4.9
 ```
 
 推完标签后大概 1–2 分钟，[Releases](https://github.com/yoea/get-paid-live/releases) 上就多一个带 exe 的版本。
@@ -149,13 +149,13 @@ git push origin v1.4.8
 | 检出代码 | `windows-latest` 干净环境 |
 | 安装 Python | 3.12，`cache: pip` 按 `requirements.txt` 缓存依赖 |
 | 装依赖 | pywebview（框架）+ pyinstaller（打包器），只装在构建机上 |
-| 校验版本号 | 标签 `v1.4.8` 必须等于 `version.py` 里的 `VERSION`，不一致直接失败 |
+| 校验版本号 | 标签 `v1.4.9` 必须等于 `version.py` 里的 `VERSION`，不一致直接失败 |
 | 打包 | 跑 `python build.py`，产出单文件 exe |
 | 校验产物 | 文件名里必须含版本号、体积必须大于 5 MB，否则判定打包缺东西 |
 | 存构建产物 | 上传到 Actions 的 Artifacts，保留 7 天 |
 | 发 Release | 用 `gh release` 创建版本并附上 exe，正文整段取自 `.github/release-notes.md` |
 
-**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.9、exe 里却是 1.4.8」这种发出去才发现的问题。
+**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.10、exe 里却是 1.4.9」这种发出去才发现的问题。
 
 Release 正文的排序也是约定：`.github/release-notes.md` 里最上面永远是最新版本，新段落往下压一层旧的，长期不变的功能说明固定在最后一节。CI 原样使用，不做任何重排。
 
@@ -171,7 +171,7 @@ CI 挂了或者想离线验证，本地也能打，约 24 秒：
 打包exe.bat
 ```
 
-生成 `dist\GetPaidLive-v1.4.8.exe`。第一次运行会联网装 pywebview / pystray / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
+生成 `dist\GetPaidLive-v1.4.9.exe`。第一次运行会联网装 pywebview / pystray / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
 
 或者手动执行等价的三条：
 
@@ -243,7 +243,14 @@ python -m venv .venv-build
 
 ```
 desktop.py                    桌面外壳：窗口、托盘、开机启动、到点通知、查更新
-上班鼓励器.html                界面与全部逻辑
+src/index.html                界面标记（版本号签名也在这里；head 里的防白闪脚本必须内联）
+src/app.css                   全部样式，两套主题的变量也在里面
+src/engine.js                 纯计算引擎：日历、薪资、发薪日推算，不碰 DOM，node 里可直接跑测试
+src/ui.js                     渲染与交互：卡片刷新、设置面板、粒子背景
+merge.py                      把 src/ 合成单文件 上班鼓励器.html（build.py 打包前会自动跑）
+上班鼓励器.html                【生成物】由 merge.py 合出，运行和打包只认它，别手改
+tests/engine.test.js          引擎回归用例：node tests/engine.test.js
+check.bat                     一键自检：产物同步 + 语法 + 引擎用例 + python 编译
 version.py                    版本号（唯一来源，打包和查更新都读它）
 build.py                      打包脚本，版本号之外的打包参数在这里
 打包exe.bat                   一键打包（本地用，CI 不用它）
@@ -273,4 +280,4 @@ assets/screenshot.png         README 用的界面截图
 
 ---
 
-作者 **Ethan** · v1.4.8 · MIT
+作者 **Ethan** · v1.4.9 · MIT

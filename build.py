@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 
+import merge as merge_html
 from version import VERSION
 
 # Windows 的 CI 上 stdout 默认是 cp1252，print 中文会直接抛 UnicodeEncodeError。
@@ -119,6 +120,14 @@ def clean_old_exe():
 
 def main():
     os.chdir(HERE)
+
+    # 界面是 src/ 合成出来的，每次打包先重合成一遍：改了源文件忘了跑 merge.py
+    # 也不会打出一个旧界面进去。
+    try:
+        merge_html.merge()
+    except Exception as exc:
+        print("合成界面失败：%r" % (exc,))
+        return 1
 
     pyinstaller = pyinstaller_command()
     if pyinstaller is None:

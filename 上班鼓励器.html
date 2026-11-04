@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- 本文件由 merge.py 从 src/ 生成。要改东西请改 src/ 下的源文件，别直接编辑这里。 -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -943,7 +944,7 @@ html.lock{overflow:hidden}
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.8</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.9</button>
     </div>
   </footer>
 </div>
@@ -1816,6 +1817,12 @@ var Guliqi = (function () {
   };
 })();
 /* ==ENGINE-END== */
+
+/* 只在 Node 下导出，方便直接跑回归用例（tests/engine.test.js）：
+   node -e "var G=require('./src/engine.js')"。浏览器里有 window，这一段直接跳过。 */
+if (typeof window === 'undefined' && typeof module !== 'undefined' && module.exports) {
+  module.exports = Guliqi;
+}
 </script>
 
 <script>

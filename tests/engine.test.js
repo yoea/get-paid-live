@@ -1,0 +1,126 @@
+/* 引擎回归用例：改完 src/engine.js 跑一次，确认没把日历和发薪日算坏。
+   node tests/engine.test.js */
+
+var assert = require('assert');
+var path = require('path');
+var G = require(path.join(__dirname, '..', 'src', 'engine.js'));
+
+var pass = 0, fail = 0;
+
+function t(name, fn) {
+  try {
+    fn();
+    pass++;
+    console.log('  ok   ' + name);
+  } catch (e) {
+    fail++;
+    console.log('  FAIL ' + name + '\n       ' + (e && e.message));
+  }
+}
+
+// 同一天里逐秒比对用
+function at(y, m, d, h, mi, s) { return new Date(y, m - 1, d, h || 0, mi || 0, s || 0); }
+function fmt(d) {
+  if (!d) return 'null';
+  var p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+    + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function engine(extra) {
+  var base = {
+    monthly_salary: 8000,
+    work_start: '09:00', work_end: '18:00',
+    break_start: '12:00', break_end: '13:00',
+    pay_day: 5, pay_time: '17:00'
+  };
+  for (var k in extra) base[k] = extra[k];
+  return new G.Engine(G.normalize(base));
+}
+
+console.log('发薪日');
+t('11-04 21:00 之后的下一个是 11-05 17:00', function () {
+  var e = engine();
+  assert.strictEqual(fmt(e.snapshot(at(2026, 11, 4, 21, 0), false).payday), '2026-11-05 17:00');
+});
+
+t('5 号落周六就往前挪到 12-04 周五', function () {
+  var e = engine();
+  assert.strictEqual(fmt(e.snapshot(at(2026, 12, 1, 9, 0), false).payday), '2026-12-04 17:00');
+});
+
+t('整段国庆假期把 10-05 退到 09-30', function () {
+  var e = engine();
+  assert.strictEqual(fmt(e.snapshot(at(2026, 9, 29, 9, 0), false).payday), '2026-09-30 17:00');
+});
+
+t('退到的日子已经过去，就跳到下个月（不倒计时到过去）', function () {
+  var e = engine();
+  assert.strictEqual(fmt(e.snapshot(at(2026, 10, 1, 9, 0), false).payday), '2026-11-05 17:00');
+});
+
+t('当天已过点就跳下个月', function () {
+  var e = engine();
+  var s = e.snapshot(at(2026, 11, 5, 17, 0, 1), false);
+  assert.ok(s.payday.getTime() > at(2026, 11, 5, 17, 0, 1).getTime(), '应该已经跳到下个月');
+  assert.strictEqual(s.payday.getMonth(), 11, '应落在 12 月，实际 ' + fmt(s.payday));
+});
+
+t('2 月没有 31 号，按当月末算且不跑出这个月', function () {
+  var e = engine({ pay_day: 31 });
+  var s = e.snapshot(at(2026, 2, 1, 9, 0), false);
+  assert.strictEqual(s.payday.getMonth(), 1, '应仍在 2 月，实际 ' + fmt(s.payday));
+  assert.strictEqual(s.payday.getDate() >= 24, true, '应接近月末，实际 ' + fmt(s.payday));
+});
+
+t('留空发薪日就没有下一个发薪时刻', function () {
+  var e = engine({ pay_day: 0, pay_time: '' });
+  var s = e.snapshot(at(2026, 11, 4, 21, 0), false);
+  assert.strictEqual(s.payday, null);
+  assert.strictEqual(s.paydayLeft, 0);
+});
+
+console.log('计时口径');
+t('午休期间 worked 不动，clockLeft 照常走', function () {
+  var a = engine().snapshot(at(2026, 11, 4, 12, 30, 0), false);
+  var b = engine().snapshot(at(2026, 11, 4, 12, 30, 20), false);
+  assert.strictEqual(a.worked, b.worked, '午休不该累计工时');
+  assert.ok(Math.abs((a.clockLeft - b.clockLeft) - 20) < 0.001, '离下班时钟应少 20 秒');
+});
+
+t('12:30 的工时进度仍是 3/8，时间轴进度按上下班跨度算', function () {
+  var s = engine().snapshot(at(2026, 11, 4, 12, 30), false);
+  assert.ok(Math.abs(s.progress - 0.375) < 1e-9, '净工时进度 ' + s.progress);
+  assert.ok(Math.abs(s.spanProgress - 3.5 / 9) < 1e-9, '时间轴进度 ' + s.spanProgress);
+  assert.strictEqual(s.worked, 10800);
+  assert.strictEqual(s.totalSec, 28800);
+});
+
+t('下班后 worked 顶到满、clockLeft 归零', function () {
+  var s = engine().snapshot(at(2026, 11, 4, 20, 0), false);
+  assert.strictEqual(s.worked, 28800);
+  assert.strictEqual(s.clockLeft, 0);
+});
+
+t('休息日不累计工时', function () {
+  var s = engine().snapshot(at(2026, 11, 7, 12, 0), false);   // 周六
+  assert.strictEqual(s.isWorkday, false);
+  assert.strictEqual(s.worked, 0);
+});
+
+console.log('格式');
+t('parseHHMM 认得出正常值、拒绝脏值', function () {
+  assert.deepStrictEqual(G.parseHHMM('09:05'), { h: 9, mi: 5 });
+  assert.strictEqual(G.parseHHMM('25:00'), null);
+  assert.strictEqual(G.parseHHMM(''), null);
+});
+
+t('normalize 把越界的发薪日拉回默认', function () {
+  assert.strictEqual(G.normalize({ pay_day: 32 }).pay_day, 5);
+  assert.strictEqual(G.normalize({ pay_day: 0 }).pay_day, 0);
+  assert.strictEqual(G.normalize({ pay_day: '' }).pay_day, 0);
+});
+
+console.log('');
+console.log(fail === 0 ? ('全部通过：' + pass + ' 项') : ('失败 ' + fail + ' 项 / 共 ' + (pass + fail) + ' 项'));
+process.exit(fail === 0 ? 0 : 1);

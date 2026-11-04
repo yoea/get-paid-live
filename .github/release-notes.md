@@ -1,6 +1,11 @@
 <!-- CI 直接把本文件当 Release 正文。新版本段落永远插在最上面，长期不变的功能说明放最后。 -->
 **Windows 桌面版**，下载下面的 exe 双击即可运行，不需要安装 Python、浏览器或任何运行库。开源，[MIT 许可](https://github.com/yoea/get-paid-live/blob/main/LICENSE)。
 
+## v1.4.9
+
+- **关于页新增「隐私」入口**：一句话写明「数据只存本机，不上传」，点开是完整的[隐私政策](https://github.com/yoea/get-paid-live/blob/main/docs/PRIVACY.md)——你填的薪资、时间、备注全部只存在你电脑的 `%LOCALAPPDATA%\ShangBanGuLiQi\` 里，没有账号、没有云端、没有统计埋点
+- **界面源码拆分**：开发侧把单个 3300 行的 html 拆成 `src/` 下的 html / css / js 四个文件，并给发薪日、午休、日历这些纯计算加了 13 项回归用例；对使用没有任何变化，发布的仍是同一个单文件 exe
+
 ## v1.4.8
 
 - **记住窗口大小**：手动拖出来的尺寸会记下来，下次打开直接沿用（程序自己算的自适应尺寸不记，不会把窗口永久锁死）
