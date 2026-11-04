@@ -220,6 +220,22 @@ body{
 /* 上/下班时间：跟在两个大数下面的一行小字 */
 .duo .s{font-size:10.5px;color:var(--faint);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* ---------- 发薪日 ---------- */
+/* 主卡下面一条金边小横条。发薪日是"还有多久拿到钱"，跟这张卡的主题一致，
+   所以放这里，不占统计格。右端的日期靠 margin-left:auto 顶到最右，
+   窄窗口时先被省略号吃掉的是它，倒计时本身永远完整。 */
+.payday{
+  display:flex;align-items:baseline;gap:8px;margin-top:9px;padding:8px 11px;
+  border-radius:12px;border:1px solid var(--gold-line);background:var(--gold-tint);
+  font-size:11.5px;color:var(--faint);min-width:0;
+}
+.payday .k{flex:0 0 auto;color:var(--gold-2);font-weight:650;letter-spacing:.04em;white-space:nowrap}
+.payday .v{
+  flex:0 0 auto;color:var(--gold);font-weight:700;font-size:13px;
+  white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:.01em;
+}
+.payday .s{margin-left:auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* ---------- 进度 ---------- */
 .prog-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
 .prog-head .t{font-size:12.5px;color:var(--dim);letter-spacing:.02em}
@@ -799,6 +815,12 @@ html.lock{overflow:hidden}
             <div class="s" id="duoOut">--</div>
           </div>
         </div>
+
+        <div class="payday" id="paydayRow">
+          <span class="k">距发薪</span>
+          <b class="v" id="paydayLeft">--</b>
+          <span class="s" id="paydayWhen">--</span>
+        </div>
       </section>
 
       <section class="card">
@@ -871,7 +893,7 @@ html.lock{overflow:hidden}
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.4</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.5</button>
       <span class="ver-msg" id="verMsg"></span>
     </div>
   </footer>
@@ -943,7 +965,20 @@ html.lock{overflow:hidden}
       </div>
     </div>
 
-    <div class="sec-note" id="secNote">时间先按 9:00-18:00、午休 1 小时预填好了，跟你不一致就改。节假日、商品表之后在设置里随时能调。</div>
+    <div class="row2">
+      <div class="field">
+        <label for="fPayDay">发薪日（每月几号）</label>
+        <input type="number" id="fPayDay" min="1" max="31" step="1" inputmode="numeric" placeholder="5">
+      </div>
+      <div class="field">
+        <label for="fPayTime">到账时间</label>
+        <input type="time" id="fPayTime">
+      </div>
+    </div>
+    <div class="err" id="payErr"></div>
+    <div class="hint" style="margin:-7px 0 13px">主界面会显示到下一个发薪时刻的倒计时。碰上周末或法定节假日，自动往前挪到最近的工作日。</div>
+
+    <div class="sec-note" id="secNote">时间先按 9:00-18:00、午休 1 小时、每月 5 号 17:00 发薪预填好了，跟你不一致就改。节假日、商品表之后在设置里随时能调。</div>
 
     </div>
 
@@ -1127,6 +1162,9 @@ var Guliqi = (function () {
     work_end: '18:00',
     break_start: '12:00',
     break_end: '13:00',
+    // 发薪日：每月几号、几点到账。碰上周末或节假日会往前挪到最近的工作日。
+    pay_day: 5,
+    pay_time: '17:00',
     work_weekdays: [1, 2, 3, 4, 5],
     holidays: [
       // ---- 2026 ----
@@ -1311,6 +1349,10 @@ var Guliqi = (function () {
     cfg.work_end = normTime(cfg.work_end, '18:00');
     cfg.break_start = normTimeOpt(cfg.break_start);
     cfg.break_end = normTimeOpt(cfg.break_end);
+    // 1-31 之外的值（0、32、null、"5 号"）一律回到默认，别让日历算出一个不存在的日子
+    cfg.pay_day = Math.round(toNum(cfg.pay_day, DEFAULT_CFG.pay_day));
+    if (!(cfg.pay_day >= 1 && cfg.pay_day <= 31)) cfg.pay_day = DEFAULT_CFG.pay_day;
+    cfg.pay_time = normTime(cfg.pay_time, DEFAULT_CFG.pay_time);
     cfg.work_weekdays = parseWeekdays(cfg.work_weekdays);
     cfg.holidays = parseDates(cfg.holidays);
     cfg.makeup_workdays = parseDates(cfg.makeup_workdays);
@@ -1477,6 +1519,13 @@ var Guliqi = (function () {
     this.netMinutes = this.dayMinutes - this.breakLen;
     if (this.netMinutes <= 0) this.netMinutes = this.dayMinutes;
 
+    // 发薪日：几号 + 几点
+    var pt = parseHHMM(cfg.pay_time);
+    if (!pt) pt = { h: 17, mi: 0 };
+    this.payDay = cfg.pay_day;
+    this.payH = pt.h;
+    this.payMi = pt.mi;
+
     var items = [];
     for (var i = 0; i < cfg.items.length; i++) {
       var it = cfg.items[i];
@@ -1508,6 +1557,32 @@ var Guliqi = (function () {
     var total = 0;
     for (var m = 1; m < today.getMonth() + 1; m++) total += this.monthIncome(today.getFullYear(), m);
     return total + monthTotal;
+  };
+
+  /* ---------- 发薪日 ----------
+     口径：每月 pay_day 号的 pay_time，碰上非工作日就往前挪到最近的工作日。
+     往前挪允许跨月（春节把工资提前到节前最后一个工作日是常规做法），
+     最多退 20 天，防节假日表写错时死循环。
+     当月没有这一天（比如 31 号遇到 30 天的月份）就按当月最后一天算。 */
+  Engine.prototype.paydayAt = function (y, m) {
+    var last = new Date(y, m, 0).getDate();          // m 是 1-12
+    var day = Math.min(this.payDay, last);
+    for (var i = 0; i < 20; i++) {
+      var d = new Date(y, m - 1, day - i, this.payH, this.payMi, 0, 0);
+      var dayOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      if (this.cal.isWorkday(dayOnly)) return d;
+    }
+    return new Date(y, m - 1, day, this.payH, this.payMi, 0, 0);
+  };
+
+  /* 下一个发薪时刻：本月的过了（或者今天已经到点）就取下个月 */
+  Engine.prototype.nextPayday = function (now) {
+    var y = now.getFullYear(), m = now.getMonth() + 1;
+    var d = this.paydayAt(y, m);
+    if (d.getTime() <= now.getTime()) {
+      d = m === 12 ? this.paydayAt(y + 1, 1) : this.paydayAt(y, m + 1);
+    }
+    return d;
   };
 
   Engine.prototype.snapshot = function (now, demo) {
@@ -1564,13 +1639,18 @@ var Guliqi = (function () {
       perSec: perSec, hourly: hourly, earned: earned
     });
 
+    // 发薪日跟着"现在"走：演示模式的假时钟也会算出对应的下一个发薪时刻
+    var payday = this.nextPayday(now);
+
     return {
       now: now, today: today, status: status, isWorkday: workday,
       worked: worked, remaining: remaining, totalSec: totalSec,
       progress: progress, earned: earned, monthTotal: monthTotal,
       yearEarned: this.yearEarned(today, monthTotal),
       dailyPay: daily, hourly: hourly, perSec: perSec, speed: speed,
-      monthDays: monthDays, doneDays: doneDays, msg: msg
+      monthDays: monthDays, doneDays: doneDays, msg: msg,
+      payday: payday,
+      paydayLeft: Math.max(0, (payday.getTime() - now.getTime()) / 1000)
     };
   };
 
@@ -1668,6 +1748,7 @@ var Guliqi = (function () {
     monthTotal: $('monthTotal'), yearEarned: $('yearEarned'),
     hourly: $('hourly'), dailyPay: $('dailyPay'),
     dayNo: $('dayNo'), dayTotal: $('dayTotal'), days: $('days'),
+    paydayLeft: $('paydayLeft'), paydayWhen: $('paydayWhen'),
     hideTxt: $('hideTxt'),
     tag: document.querySelector('.tag')
   };
@@ -1757,6 +1838,29 @@ var Guliqi = (function () {
   function money(v) { return cfg.display.hide_money ? '****' : G.fmtMoney(v); }
 
   var WEEK_CN = '日一二三四五六';
+
+  /* ---------- 发薪日文案 ----------
+     天/小时/分三档，不再往回数到秒：发薪日动辄十几天，秒级跳动只是噪音。 */
+  function fmtPayLeft(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    var day = Math.floor(sec / 86400);
+    var h = Math.floor((sec % 86400) / 3600);
+    var mi = Math.floor((sec % 3600) / 60);
+    if (day > 0) return day + ' 天 ' + h + ' 小时';
+    if (h > 0) return h + ' 小时 ' + mi + ' 分';
+    if (mi > 0) return mi + ' 分';
+    return '不到 1 分钟';
+  }
+
+  function fmtPayWhen(d, today) {
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    var hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    var one = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var diff = Math.round((one.getTime() - today.getTime()) / 86400000);
+    if (diff === 0) return '今天 ' + hm;
+    if (diff === 1) return '明天 ' + hm;
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hm;
+  }
 
   var STATUS_KEY = {
     '上班中': 'work', '小憩': 'rest', '已下班': 'off', '未开工': 'idle', '休息': 'holiday'
@@ -2026,6 +2130,10 @@ var Guliqi = (function () {
       if (refs[k]) refs[k].classList.toggle('masked', hide);
     });
 
+    // 发薪日倒计时
+    setText('paydayLeft', fmtPayLeft(snap.paydayLeft));
+    setText('paydayWhen', fmtPayWhen(snap.payday, snap.today));
+
     // 日历
     setText('dayNo', String(snap.doneDays + (snap.isWorkday ? 1 : 0)));
     setText('dayTotal', String(snap.monthDays));
@@ -2269,6 +2377,8 @@ var Guliqi = (function () {
       $('fEnd').value = '18:00';
       $('fBreakS').value = '12:00';
       $('fBreakE').value = '13:00';
+      $('fPayDay').value = G.DEFAULT_CFG.pay_day;
+      $('fPayTime').value = G.DEFAULT_CFG.pay_time;
       draftWeek = [1, 2, 3, 4, 5];
     } else {
       $('fSalary').value = cfg.monthly_salary;
@@ -2276,6 +2386,8 @@ var Guliqi = (function () {
       $('fEnd').value = cfg.work_end;
       $('fBreakS').value = cfg.break_start;
       $('fBreakE').value = cfg.break_end;
+      $('fPayDay').value = cfg.pay_day;
+      $('fPayTime').value = cfg.pay_time;
       draftWeek = cfg.work_weekdays.slice();
     }
     paintWeek();
@@ -2400,6 +2512,17 @@ var Guliqi = (function () {
       showErr('breakErr', '午休结束要晚于开始', $('fBreakE'));
       ok = false;
     }
+
+    // 发薪日：1-31 的整数 + 一个时间。两个都可能为空（用户删掉了），一起判
+    var pdRaw = String($('fPayDay').value || '').trim();
+    var pd = /^\d{1,2}$/.test(pdRaw) ? parseInt(pdRaw, 10) : NaN;
+    if (!(pd >= 1 && pd <= 31)) {
+      showErr('payErr', pdRaw ? '发薪日要填 1 到 31 之间的整数' : '填一下每月几号发工资', $('fPayDay'));
+      ok = false;
+    } else if (toMin($('fPayTime').value) === null) {
+      showErr('payErr', '发薪时间也要填（几点到账）', $('fPayTime'));
+      ok = false;
+    }
     return ok;
   }
 
@@ -2422,6 +2545,8 @@ var Guliqi = (function () {
       work_end: $('fEnd').value,
       break_start: $('fBreakS').value,
       break_end: $('fBreakE').value,
+      pay_day: parseInt(String($('fPayDay').value).trim(), 10),
+      pay_time: $('fPayTime').value,
       work_weekdays: draftWeek,
       holidays: $('fHolidays').value,
       makeup_workdays: $('fMakeup').value,
@@ -2455,7 +2580,7 @@ var Guliqi = (function () {
   });
 
   // 清空输入时的错误提示，别让红字一直挂着
-  ['fSalary', 'fStart', 'fEnd', 'fBreakS', 'fBreakE'].forEach(function (id) {
+  ['fSalary', 'fStart', 'fEnd', 'fBreakS', 'fBreakE', 'fPayDay', 'fPayTime'].forEach(function (id) {
     $(id).addEventListener('input', function () {
       this.style.borderColor = '';
       clearErrors();
