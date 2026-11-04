@@ -241,7 +241,9 @@ body{
 .prog-head .t{font-size:12.5px;color:var(--dim);letter-spacing:.02em}
 .prog-head .p{font-size:21px;font-weight:750;color:var(--mint);letter-spacing:-.01em}
 .bar{position:relative;height:11px;border-radius:999px;background:var(--raise);border:1px solid var(--line);overflow:hidden}
-.bar>i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#2fbf82,#4ade9f 42%,#ffc857 100%);box-shadow:0 0 12px rgba(74,222,159,.3)}
+/* 过渡：宽度每次变化都平滑插值（午休停在原地、13:00 突然跳一格这类场景不再生硬）。
+   缓动取"起步快、收尾稳"的曲线，60fps 下逐帧微调时视觉上就是匀速滑动。 */
+.bar>i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#2fbf82,#4ade9f 42%,#ffc857 100%);box-shadow:0 0 12px rgba(74,222,159,.3);transition:width .3s cubic-bezier(.33,0,.2,1)}
 /* 午休：轴按"当天时间"做刻度，午休段就按真实时长占位（1 小时 / 9 小时 ≈ 11%），
    left 与 width 都由 JS 按上下班和午休时间算，这里不写死。
    底色用 --surface（深色比轨道更深、浅色比轨道更白），条纹叠在它上面 ⇒ 整段不透明，
@@ -255,9 +257,6 @@ body{
   box-sizing:border-box;
   pointer-events:auto;      /* 只为让 title 提示能弹出来 */
 }
-.prog-foot{display:flex;justify-content:space-between;gap:10px;margin-top:9px;font-size:12px;color:var(--dim);flex-wrap:wrap}
-.prog-foot b{color:var(--text);font-weight:600}
-
 /* ---------- 统计 ---------- */
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .stat{
@@ -371,9 +370,21 @@ body{
 }
 .foot .ver:hover{color:var(--gold);border-bottom-color:var(--gold-line-2)}
 .foot .ver.busy{color:var(--dim);cursor:progress}
-/* 查更新的回执：贴在版本号右边，两秒后自己消失 */
-.foot .ver-msg{color:var(--mint-fg);opacity:0;transition:opacity .2s}
-.foot .ver-msg.on{opacity:1}
+/* 全局 toast：查更新结果等一次性提示，底部居中浮出，几秒后自己消失。
+   z-index 低于设置面板（60）的遮罩之上没问题——面板开着时不会同时弹 toast，
+   但保留 80 以防被日历备注（70）之类盖住。 */
+.toast{
+  position:fixed;left:50%;bottom:30px;z-index:80;
+  transform:translate(-50%,12px);
+  padding:9px 17px;border-radius:999px;
+  background:var(--surface);border:1px solid var(--line);color:var(--text);
+  font-size:12.5px;letter-spacing:.02em;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  opacity:0;pointer-events:none;
+  transition:opacity .22s ease,transform .22s ease;
+  max-width:min(86vw,420px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
 
 /* ---------- 日期备注 ---------- */
 .notepop{position:fixed;inset:0;z-index:70;display:none}
@@ -842,10 +853,6 @@ html.lock{overflow:hidden}
           <span class="p" id="pct">0.0%</span>
         </div>
         <div class="bar"><i id="barFill"></i><span class="bar-break" id="barBreak"></span></div>
-        <div class="prog-foot">
-          <span>已工作 <b id="hWorked">0.00</b> / 总工作 <b id="hTotal">0.00</b> 小时</span>
-          <span id="leftNote">--</span>
-        </div>
       </section>
     </div>
 
@@ -906,11 +913,13 @@ html.lock{overflow:hidden}
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.6</button>
-      <span class="ver-msg" id="verMsg"></span>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.7</button>
     </div>
   </footer>
 </div>
+
+<!-- 全局 toast：查更新结果等一次性提示 -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- ================= 设置面板 ================= -->
 <div class="sheet" id="sheet">
@@ -1641,6 +1650,10 @@ var Guliqi = (function () {
     }
 
     var remaining = Math.max(0, totalSec - worked);
+    /* 距下班的"时钟口径"剩余：此刻到下班时刻的真实时长（含午休）。
+       remaining 是净工时口径（午休不计入），午休期间一动不动——
+       那是"还要干多少活"的正确答案，但拿去当"距下班倒计时"就是 bug。 */
+    var clockLeft = Math.max(0, (endDt.getTime() - now.getTime()) / 1000);
     var progress = totalSec ? worked / totalSec : 0;
     var earned = hourly * worked / 3600.0;
     var doneDays = this.cal.workdaysBefore(today);
@@ -1668,7 +1681,7 @@ var Guliqi = (function () {
 
     return {
       now: now, today: today, status: status, isWorkday: workday,
-      worked: worked, remaining: remaining, totalSec: totalSec,
+      worked: worked, remaining: remaining, clockLeft: clockLeft, totalSec: totalSec,
       progress: progress, spanProgress: spanProgress,
       earned: earned, monthTotal: monthTotal,
       yearEarned: this.yearEarned(today, monthTotal),
@@ -1769,7 +1782,6 @@ var Guliqi = (function () {
     duoWorked: $('duoWorked'), duoLeft: $('duoLeft'),
     duoIn: $('duoIn'), duoOut: $('duoOut'),
     pct: $('pct'), barFill: $('barFill'), barBreak: $('barBreak'),
-    hWorked: $('hWorked'), hTotal: $('hTotal'), leftNote: $('leftNote'),
     monthTotal: $('monthTotal'), yearEarned: $('yearEarned'),
     hourly: $('hourly'), dailyPay: $('dailyPay'),
     dayNo: $('dayNo'), dayTotal: $('dayTotal'), days: $('days'),
@@ -1865,16 +1877,19 @@ var Guliqi = (function () {
   var WEEK_CN = '日一二三四五六';
 
   /* ---------- 发薪日文案 ----------
-     天/小时/分三档，不再往回数到秒：发薪日动辄十几天，秒级跳动只是噪音。 */
+     精确到毫秒的实时倒计时：天 + HH:MM:SS.mmm。
+     paydayLeft 本身是浮点秒（(发薪时刻 - now)/1000），主循环每帧都算，
+     所以毫秒位跟着屏幕刷新率走。数字用等宽字形（tabular-nums），不会抖。 */
   function fmtPayLeft(sec) {
-    sec = Math.max(0, Math.floor(sec || 0));
+    sec = Math.max(0, sec || 0);
+    var pad = function (n, w) { return String(n).padStart(w, '0'); };
     var day = Math.floor(sec / 86400);
     var h = Math.floor((sec % 86400) / 3600);
     var mi = Math.floor((sec % 3600) / 60);
-    if (day > 0) return day + ' 天 ' + h + ' 小时';
-    if (h > 0) return h + ' 小时 ' + mi + ' 分';
-    if (mi > 0) return mi + ' 分';
-    return '不到 1 分钟';
+    var s = Math.floor(sec % 60);
+    var ms = Math.floor((sec % 1) * 1000);
+    var clock = pad(h, 2) + ':' + pad(mi, 2) + ':' + pad(s, 2) + '.' + pad(ms, 3);
+    return day > 0 ? day + ' 天 ' + clock : clock;
   }
 
   function fmtPayWhen(d, today) {
@@ -2151,7 +2166,8 @@ var Guliqi = (function () {
     setText('speed', hide ? '****' : snap.speed.toFixed(4));
     setText('phaseNote', '今天共 ' + engine.netHours.toFixed(2) + ' 小时计薪');
     setText('duoWorked', G.fmtHMSms(snap.worked));
-    setText('duoLeft', G.fmtHMSms(snap.remaining));
+    // 距下班用时钟口径（含午休，任何时段都在走）；休息日没有"下班时刻"，退回净工时口径
+    setText('duoLeft', G.fmtHMSms(snap.isWorkday ? snap.clockLeft : snap.remaining));
 
     // 鼓励语
     var kindKey = snap.msg.kind === 'item' && snap.msg.gap !== undefined ? 'item' : snap.msg.kind;
@@ -2169,9 +2185,6 @@ var Guliqi = (function () {
       refs.barFill.style.width = (p * 100).toFixed(3) + '%';
     }
     paintBarBreak();
-    setText('hWorked', (snap.worked / 3600).toFixed(2));
-    setText('hTotal', engine.netHours.toFixed(2));
-    setText('leftNote', '距下班 ' + G.fmtHMSms(snap.remaining));
 
     // 统计
     setText('monthTotal', money(snap.monthTotal));
@@ -2813,16 +2826,17 @@ var Guliqi = (function () {
     p.then(function (info) { if (info) showUpdate(info); }, function () {});
   }
 
-  /* ---------- 点版本号查更新 ----------
-     鼠标停在版本号上会提示「点击检查新版本」；点一下在后台查，结果贴在旁边两秒。 */
-  var verMsgTimer = null;
+  /* ---------- 全局 toast ----------
+     一次性提示（查更新结果等）从底部浮出，2.8 秒后自己消失。
+     替代原先贴在版本号旁边的 verMsg——那会跟底栏布局抢地方。 */
+  var toastTimer = null;
 
-  function flashVer(text) {
-    var el = $('verMsg');
+  function toast(text) {
+    var el = $('toast');
     el.textContent = text;
     el.classList.add('on');
-    if (verMsgTimer) clearTimeout(verMsgTimer);
-    verMsgTimer = setTimeout(function () { el.classList.remove('on'); }, 3200);
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('on'); }, 2800);
   }
 
   (function () {
@@ -2831,7 +2845,7 @@ var Guliqi = (function () {
 
     btn.addEventListener('click', function () {
       if (btn.classList.contains('busy')) return;
-      if (!desk.ready()) { flashVer('桌面版才能查'); return; }
+      if (!desk.ready()) { toast('桌面版才能查更新'); return; }
 
       var base = lastUpdateAt;
       btn.classList.add('busy');
@@ -2852,14 +2866,14 @@ var Guliqi = (function () {
             btn.classList.remove('busy');
             btn.textContent = 'v' + (info.current || baseVer.replace(/^v/, ''));
             lastUpdateAt = info.at;
-            if (info.newer) { showUpdate(info); flashVer('有新版本 ' + info.tag); }
-            else flashVer('已是最新');
+            if (info.newer) { showUpdate(info); toast('发现新版本 ' + info.tag); }
+            else toast('已是最新版本 v' + (info.current || ''));
           } else if (tries < 16) {
             setTimeout(wait, 700);
           } else {
             btn.classList.remove('busy');
             btn.textContent = baseVer;
-            flashVer('网络不通，待会儿再试');
+            toast('网络不通，待会儿再试');
           }
         }, function () {
           btn.classList.remove('busy');
@@ -2885,7 +2899,7 @@ var Guliqi = (function () {
     if (!b) return;
     var url = b.getAttribute('data-url');
     if (!url) return;
-    if (!desk.ready()) { flashVer('用桌面版才能打开'); return; }
+    if (!desk.ready()) { toast('用桌面版才能打开链接'); return; }
     desk.send('open_url', url);
   });
 
