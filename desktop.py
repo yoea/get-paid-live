@@ -489,9 +489,64 @@ class _State(object):
         self.update = None        # 查到的版本信息，供界面轮询取走
         self.first_hide = True
         self.notices = {}         # 到点提醒的去重表：{(kind, 日期): True}
+        self.win_saved = False    # 本次启动用的是上次记住的尺寸（是就不再自动收窗口）
+        self.fit_size = None      # 程序自己 fit 出来的尺寸，用来区分"用户拖的"
+        self.fit_until = 0.0      # 程序调 resize 后的忽略期，期间的 resized 事件不算数
+        self.size_timer = None    # 尺寸落盘的 debounce 定时器
 
 
 state = _State()
+
+
+# ---------------------------------------------------------------- 窗口尺寸的记忆
+
+def _screen_size():
+    """主屏分辨率（物理像素）。pywebview.screens 要等 start() 之后才有，这里不能等。"""
+    try:
+        import ctypes
+
+        u = ctypes.windll.user32
+        return int(u.GetSystemMetrics(0)), int(u.GetSystemMetrics(1))
+    except Exception:
+        return (0, 0)
+
+
+def _remember_size():
+    """把当前窗口大小写进库。
+
+    只有当尺寸不是"程序自己 fit 出来的那个"才记——否则用户从来没拖过窗口，
+    每次启动都会被记成一次"用户尺寸"，之后就永远不再自动适配内容高度了。
+    """
+    win = state.window
+    if win is None:
+        return False
+    try:
+        w, h = int(win.width), int(win.height)
+    except Exception:
+        return False
+    if state.fit_size and (w, h) == state.fit_size:
+        return False
+    return store.save_window(w, h)
+
+
+def _remember_size_soon():
+    old = state.size_timer
+    if old is not None:
+        try:
+            old.cancel()
+        except Exception:
+            pass
+    t = threading.Timer(0.8, _remember_size)   # 拖边框时每像素一个事件，等停手再写
+    t.daemon = True
+    state.size_timer = t
+    t.start()
+
+
+def on_resized(*_args):
+    # 程序自己 resize（fit_window）引起的 WM_SIZE 不算用户行为
+    if time.time() < state.fit_until:
+        return
+    _remember_size_soon()
 
 
 def notify(title, message):
@@ -639,6 +694,7 @@ def quit_app():
     win = state.window
     if win is None:
         return
+    _remember_size()
     try:
         win.destroy()
     except Exception:
@@ -723,6 +779,7 @@ def on_closing():
     win = state.window
     try:
         if win is not None:
+            _remember_size()      # 收进托盘前把尺寸记下，下次打开还是这么大
             win.hide()
     except Exception:
         return True
@@ -749,8 +806,12 @@ def _ver_tuple(text):
     return tuple(parts)
 
 
-def check_update(manual=False):
-    """查 GitHub 上最新一个 Release。失败一律静默：连不上网不该弹框骚扰人。"""
+def check_update(manual=False, quiet=False):
+    """查 GitHub 上最新一个 Release。失败一律静默：连不上网不该弹框骚扰人。
+
+    quiet=True 是"打开设置时顺手看一眼"用的：照样联网查，但不发系统通知
+    （用户只是打开设置，不该每次都被弹一下）。
+    """
     if not manual and not load_options().get("check_update", True):
         return None
 
@@ -775,12 +836,12 @@ def check_update(manual=False):
             "at": time.time(),
         }
     except Exception:
-        if manual:
+        if manual and not quiet:
             notify("检查更新失败", "网络不通，待会儿再点一次。")
         return None
 
     state.update = info
-    if manual:
+    if manual and not quiet:
         if info["newer"]:
             notify("有新版 " + info["tag"], "打开主界面就能看到下载入口。")
         else:
@@ -804,13 +865,15 @@ class Api(object):
 
     def get_settings(self):
         opts = load_options()
+        # 只把"根目录"交给界面：data.db 是里面的一个文件，用户要的是能找到它的地方
+        data_dir = os.path.dirname(store.path() or "") or storage_dir()
         return {
             "version": VERSION,
             "autostart": autostart_enabled(),
             "check_update": bool(opts.get("check_update", True)),
             "notify_schedule": bool(opts.get("notify_schedule", True)),
             "update": state.update,
-            "db": store.path() or "",
+            "data_dir": data_dir,
         }
 
     # ---- 数据存储（SQLite）。界面启动时整份拉一次，保存时整份写回。
@@ -820,6 +883,7 @@ class Api(object):
             "ready": store.has_saved(),
             "cfg": store.load_cfg(),
             "opts": self.get_settings(),
+            "win_saved": state.win_saved,
         }
 
     def save_cfg(self, cfg):
@@ -837,7 +901,11 @@ class Api(object):
         初始 900 高是固定值，内容用不满时底部空一截。只调高度不动宽度，
         夹在 min_size 和屏幕高度之间；和当前高度差得太小就不折腾，
         避免内容一像素一像素长高时窗口跟着抖。
+
+        用户自己拖过窗口（库里有尺寸）就完全不碰——他要多大就多大。
         """
+        if state.win_saved:
+            return "user size"
         try:
             h = int(round(float(height)))
         except (TypeError, ValueError):
@@ -852,9 +920,12 @@ class Api(object):
         except Exception:
             pass
         h = max(620, min(h, max_h))
+        # 目标尺寸先记下来：退出时如果窗口仍是这个尺寸，说明不是用户拖的，不落库
+        state.fit_size = (int(win.width), h)
         if abs(h - win.height) < 16:
             return "close enough"
         try:
+            state.fit_until = time.time() + 2.5
             win.resize(win.width, h)
         except Exception:
             return "resize failed"
@@ -922,6 +993,32 @@ class Api(object):
             target=check_update, kwargs={"manual": True}, daemon=True
         ).start()
         return True
+
+    def check_update_quiet(self):
+        """设置面板打开时顺手查一次：不弹通知，两分钟内查过就直接复用结果。"""
+        info = state.update
+        if info and time.time() - float(info.get("at") or 0) < 120:
+            fresh = dict(info)
+            fresh["at"] = time.time()     # 换个时间戳，界面才知道"这次查完了"
+            state.update = fresh
+            return True
+        threading.Thread(
+            target=check_update, kwargs={"manual": True, "quiet": True}, daemon=True
+        ).start()
+        return True
+
+    def open_data_dir(self):
+        """在资源管理器里打开数据目录（配置、备注都在这个文件夹里）。"""
+        path = os.path.dirname(store.path() or "") or storage_dir()
+        try:
+            os.startfile(path)          # 仅 Windows 有；其它平台直接走异常分支
+            return True
+        except Exception:
+            try:
+                webbrowser.open("file:///" + path.replace("\\", "/"))
+                return True
+            except Exception:
+                return False
 
     def open_url(self, url):
         text = str(url or "")
@@ -1032,12 +1129,24 @@ def main():
     store.init(storage_dir())   # 先有库，后面的读取才有着落
     autostart_sync()
 
+    # 上次退出时的窗口大小；没有就用默认值。屏幕变小了就把尺寸收回屏内，
+    # 免得上限改过分辨率后窗口一半在屏幕外面。
+    win_w, win_h = store.load_window()
+    state.win_saved = bool(win_w and win_h)
+    if state.win_saved:
+        sw, sh = _screen_size()
+        if sw and sh:
+            win_w = max(400, min(win_w, sw - 40))
+            win_h = max(620, min(win_h, sh - 80))
+    else:
+        win_w, win_h = 1180, 900
+
     try:
         window = webview.create_window(
             TITLE,
             resource_path("上班鼓励器.html"),
-            width=1180,
-            height=900,
+            width=win_w,
+            height=win_h,
             min_size=(380, 620),
             background_color="#f5f6f8" if system_is_light() else "#07090d",
             text_select=True,
@@ -1045,6 +1154,10 @@ def main():
         )
         state.window = window
         window.events.closing += on_closing
+        try:
+            window.events.resized += on_resized   # 拖一下边框就记下来（debounce 0.8s）
+        except Exception:
+            pass
 
         _start_quit_watcher()      # 认「让位」信号，新版本要接手时走正常退出
         _publish_when_ready()      # 窗口建好后把句柄补进共享内存

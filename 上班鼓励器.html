@@ -421,10 +421,27 @@ body{
 .about-row .v.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11.5px;color:var(--dim)}
 .about-link{
   border:none;background:none;padding:0;font-family:inherit;font-size:12.5px;
-  color:var(--gold);cursor:pointer;text-decoration:underline;text-underline-offset:2px;
+  color:var(--gold);cursor:pointer;text-decoration:none;
   word-break:break-all;text-align:left;
 }
 .about-link:hover{color:var(--gold-2)}
+/* 「更新」一行：当前版本 + 一个动作（有新版本可下载 / 已是最新）。
+   动作本身也是按钮，但没有下划线——整块关于页都不画下划线。 */
+.about-ver{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.about-ver b{font-weight:700;font-variant-numeric:tabular-nums}
+.about-act{
+  border:0;background:none;padding:0;font-family:inherit;font-size:12.5px;line-height:1.5;
+  color:var(--gold);cursor:pointer;text-decoration:none;
+}
+.about-act:hover:not(:disabled){color:var(--gold-2)}
+.about-act:disabled{color:var(--faint);cursor:default}
+/* 数据目录：整行可点，点开就落到资源管理器 */
+.about-path{
+  border:0;background:none;padding:0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-size:11.5px;line-height:1.6;color:var(--dim);cursor:pointer;text-decoration:none;
+  text-align:left;word-break:break-all;
+}
+.about-path:hover{color:var(--gold)}
 .about-note{margin:12px 0 0;font-size:11.5px;color:var(--faint);line-height:1.65}
 
 /* ---------- 设置面板 ---------- */
@@ -442,7 +459,10 @@ body{
 .panel-grab{width:38px;height:4px;border-radius:2px;background:var(--grab);margin:10px auto 0;flex:0 0 auto}
 /* 标题和标签栏固定在顶部，只有当前这一页的内容滚动 */
 .panel-head{flex:0 0 auto;padding:12px 16px 0}
-.panel-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 14px;scrollbar-width:thin}
+/* 高度由脚本按「工时」那一页量出来写死（见 fitPanelBody）：六页共用同一块高度，
+   切页时面板不会忽高忽低。内容真的超出才在内部滚动，滚动条藏起来只留滚动手感。 */
+.panel-body{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 14px;scrollbar-width:none}
+.panel-body::-webkit-scrollbar{width:0;height:0;display:none}
 .panel h2{margin:0 0 4px;font-size:16px;font-weight:700}
 .panel .sub{margin:0;font-size:12px;color:var(--faint);line-height:1.6}
 
@@ -462,7 +482,17 @@ body{
   content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:var(--gold);
 }
 .tab-pane{display:none}
-.tab-pane.active{display:block}
+.tab-pane.active{display:block;height:100%}
+
+/* ---------- 日历页：两片输入框吃掉整块高度 ----------
+   面板高度固定了，这里就别再让它们按 min-height 各长各的：
+   两个 field 各占一半，textarea 撑满剩余空间，内容多了内部滚动（滚动条不显示）。 */
+.tab-pane[data-pane="cal"].active{display:flex;flex-direction:column;gap:13px}
+.tab-pane[data-pane="cal"] .field{margin-bottom:0;flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+.tab-pane[data-pane="cal"] label{flex:0 0 auto}
+.tab-pane[data-pane="cal"] textarea{flex:1 1 auto;min-height:0;resize:none;overflow-y:auto;scrollbar-width:none}
+.tab-pane[data-pane="cal"] textarea::-webkit-scrollbar{width:0;height:0;display:none}
+.tab-pane[data-pane="cal"] .hint{flex:0 0 auto}
 
 /* ---------- 首次设置引导 ---------- */
 .setup-tip{
@@ -840,7 +870,7 @@ html.lock{overflow:hidden}
           </div>
         </div>
 
-        <div class="payday" id="paydayRow">
+        <div class="payday" id="paydayRow" style="display:none">
           <span class="k">距发薪</span>
           <b class="v" id="paydayLeft">--</b>
           <span class="s" id="paydayWhen">--</span>
@@ -989,7 +1019,7 @@ html.lock{overflow:hidden}
 
     <div class="row2">
       <div class="field">
-        <label for="fPayDay">发薪日（每月几号）</label>
+        <label for="fPayDay">发薪日（每月几号，可留空）</label>
         <input type="number" id="fPayDay" min="1" max="31" step="1" inputmode="numeric" placeholder="5">
       </div>
       <div class="field">
@@ -998,7 +1028,6 @@ html.lock{overflow:hidden}
       </div>
     </div>
     <div class="err" id="payErr"></div>
-    <div class="hint" style="margin:-7px 0 13px">主界面会显示到下一个发薪时刻的倒计时。碰上周末或法定节假日，自动往前挪到最近的工作日。</div>
 
     <div class="sec-note" id="secNote">时间先按 9:00-18:00、午休 1 小时、每月 5 号 17:00 发薪预填好了，跟你不一致就改。节假日、商品表之后在设置里随时能调。</div>
 
@@ -1007,13 +1036,13 @@ html.lock{overflow:hidden}
     <div class="tab-pane" data-pane="cal">
     <div class="field adv-field">
       <label>法定节假日（一行一个，YYYY-MM-DD）</label>
-      <textarea id="fHolidays" spellcheck="false" placeholder="2026-10-01" style="min-height:66px"></textarea>
+      <textarea id="fHolidays" spellcheck="false" placeholder="2026-10-01"></textarea>
       <div class="hint">已内置 2026–2027 年安排，可自行增删。留空也安全：会当作没有节假日，只按周末推算，不会出错。</div>
     </div>
 
     <div class="field adv-field">
       <label for="fMakeup">调休补班日（一行一个，YYYY-MM-DD）</label>
-      <textarea id="fMakeup" spellcheck="false" placeholder="2026-09-27" style="min-height:96px"></textarea>
+      <textarea id="fMakeup" spellcheck="false" placeholder="2026-09-27"></textarea>
       <div class="hint">周末要上班的日子，填了这两天就算工作日。默认留空——各公司排班不一样，空着只会把补班日当休息日算，不会出错。</div>
     </div>
     </div>
@@ -1128,13 +1157,16 @@ html.lock{overflow:hidden}
       </div>
       <div class="about-row">
         <span class="k">更新</span>
-        <span class="v">
-          <button type="button" class="about-link" data-url="https://github.com/yoea/get-paid-live/releases">Release 列表</button>
+        <span class="v about-ver">
+          <b id="aboutCur">v--</b>
+          <button type="button" class="about-act" id="aboutUpdate" disabled>检查中…</button>
         </span>
       </div>
       <div class="about-row">
         <span class="k">数据</span>
-        <span class="v mono" id="aboutDb">data.db</span>
+        <span class="v">
+          <button type="button" class="about-path" id="aboutDir" title="点击打开数据目录">%LOCALAPPDATA%\ShangBanGuLiQi\</button>
+        </span>
       </div>
     </div>
 
@@ -1185,6 +1217,7 @@ var Guliqi = (function () {
     break_start: '12:00',
     break_end: '13:00',
     // 发薪日：每月几号、几点到账。碰上周末或节假日会往前挪到最近的工作日。
+    // pay_day = 0 表示用户留空：不显示发薪倒计时（配置里可以是"没有这项"）
     pay_day: 5,
     pay_time: '17:00',
     work_weekdays: [1, 2, 3, 4, 5],
@@ -1371,10 +1404,20 @@ var Guliqi = (function () {
     cfg.work_end = normTime(cfg.work_end, '18:00');
     cfg.break_start = normTimeOpt(cfg.break_start);
     cfg.break_end = normTimeOpt(cfg.break_end);
-    // 1-31 之外的值（0、32、null、"5 号"）一律回到默认，别让日历算出一个不存在的日子
-    cfg.pay_day = Math.round(toNum(cfg.pay_day, DEFAULT_CFG.pay_day));
-    if (!(cfg.pay_day >= 1 && cfg.pay_day <= 31)) cfg.pay_day = DEFAULT_CFG.pay_day;
-    cfg.pay_time = normTime(cfg.pay_time, DEFAULT_CFG.pay_time);
+    /* 发薪日留空是合法状态：pay_day = 0 且 pay_time = ''，主界面那一行直接不出现。
+       0 / null / '' 都算留空；只有真的给了一个数才按 1-31 校验，
+       超出范围（32、"5 号"）说明是脏数据，退回默认的 5 号。 */
+    var pdRaw = cfg.pay_day;
+    var pdBlank = (pdRaw === null || pdRaw === undefined || pdRaw === '' ||
+                   pdRaw === 0 || pdRaw === '0' || pdRaw === false);
+    if (pdBlank) {
+      cfg.pay_day = 0;
+      cfg.pay_time = '';
+    } else {
+      cfg.pay_day = Math.round(toNum(pdRaw, DEFAULT_CFG.pay_day));
+      if (!(cfg.pay_day >= 1 && cfg.pay_day <= 31)) cfg.pay_day = DEFAULT_CFG.pay_day;
+      cfg.pay_time = normTime(cfg.pay_time, DEFAULT_CFG.pay_time);
+    }
     cfg.work_weekdays = parseWeekdays(cfg.work_weekdays);
     cfg.holidays = parseDates(cfg.holidays);
     cfg.makeup_workdays = parseDates(cfg.makeup_workdays);
@@ -1541,10 +1584,10 @@ var Guliqi = (function () {
     this.netMinutes = this.dayMinutes - this.breakLen;
     if (this.netMinutes <= 0) this.netMinutes = this.dayMinutes;
 
-    // 发薪日：几号 + 几点
+    // 发薪日：几号 + 几点。payDay = 0 表示留空，主界面不显示发薪倒计时
     var pt = parseHHMM(cfg.pay_time);
     if (!pt) pt = { h: 17, mi: 0 };
-    this.payDay = cfg.pay_day;
+    this.payDay = (cfg.pay_day >= 1 && cfg.pay_day <= 31) ? cfg.pay_day : 0;
     this.payH = pt.h;
     this.payMi = pt.mi;
 
@@ -1665,8 +1708,9 @@ var Guliqi = (function () {
       perSec: perSec, hourly: hourly, earned: earned
     });
 
-    // 发薪日跟着"现在"走：演示模式的假时钟也会算出对应的下一个发薪时刻
-    var payday = this.nextPayday(now);
+    // 发薪日跟着"现在"走：演示模式的假时钟也会算出对应的下一个发薪时刻。
+    // 用户把发薪日留空时 payDay = 0，这里就是 null —— 界面那行整条不显示。
+    var payday = this.payDay ? this.nextPayday(now) : null;
 
     /* 时间轴进度：从上班到现在在整段工时里走过的比例（含午休）。
        进度条按它画，午休才能在轴上有真实长度（1 小时就是 1/9）。
@@ -1688,7 +1732,7 @@ var Guliqi = (function () {
       dailyPay: daily, hourly: hourly, perSec: perSec, speed: speed,
       monthDays: monthDays, doneDays: doneDays, msg: msg,
       payday: payday,
-      paydayLeft: Math.max(0, (payday.getTime() - now.getTime()) / 1000)
+      paydayLeft: payday ? Math.max(0, (payday.getTime() - now.getTime()) / 1000) : 0
     };
   };
 
@@ -1785,6 +1829,7 @@ var Guliqi = (function () {
     monthTotal: $('monthTotal'), yearEarned: $('yearEarned'),
     hourly: $('hourly'), dailyPay: $('dailyPay'),
     dayNo: $('dayNo'), dayTotal: $('dayTotal'), days: $('days'),
+    paydayRow: $('paydayRow'),
     paydayLeft: $('paydayLeft'), paydayWhen: $('paydayWhen'),
     hideTxt: $('hideTxt'),
     tag: document.querySelector('.tag')
@@ -1877,19 +1922,20 @@ var Guliqi = (function () {
   var WEEK_CN = '日一二三四五六';
 
   /* ---------- 发薪日文案 ----------
-     精确到毫秒的实时倒计时：天 + HH:MM:SS.mmm。
-     paydayLeft 本身是浮点秒（(发薪时刻 - now)/1000），主循环每帧都算，
-     所以毫秒位跟着屏幕刷新率走。数字用等宽字形（tabular-nums），不会抖。 */
+     中文单位直接读：「3天5小时12分8秒」，不再用冒号堆成一串。
+     天为 0 就不写"0 天"，小时同理，最短退到「12分8秒」。
+     精度到秒：主循环每帧都算，秒位自然跟着走。 */
   function fmtPayLeft(sec) {
     sec = Math.max(0, sec || 0);
-    var pad = function (n, w) { return String(n).padStart(w, '0'); };
-    var day = Math.floor(sec / 86400);
+    var d = Math.floor(sec / 86400);
     var h = Math.floor((sec % 86400) / 3600);
     var mi = Math.floor((sec % 3600) / 60);
     var s = Math.floor(sec % 60);
-    var ms = Math.floor((sec % 1) * 1000);
-    var clock = pad(h, 2) + ':' + pad(mi, 2) + ':' + pad(s, 2) + '.' + pad(ms, 3);
-    return day > 0 ? day + ' 天 ' + clock : clock;
+    var out = '';
+    if (d > 0) out += d + '天';
+    if (d > 0 || h > 0) out += h + '小时';
+    if (d > 0 || h > 0 || mi > 0) out += mi + '分';
+    return out + s + '秒';
   }
 
   function fmtPayWhen(d, today) {
@@ -2195,9 +2241,16 @@ var Guliqi = (function () {
       if (refs[k]) refs[k].classList.toggle('masked', hide);
     });
 
-    // 发薪日倒计时
-    setText('paydayLeft', fmtPayLeft(snap.paydayLeft));
-    setText('paydayWhen', fmtPayWhen(snap.payday, snap.today));
+    // 发薪日倒计时：用户留空就整行收起，不留一条空横条
+    var payOn = !!snap.payday;
+    if (cache.payOn !== payOn) {
+      cache.payOn = payOn;
+      refs.paydayRow.style.display = payOn ? '' : 'none';
+    }
+    if (payOn) {
+      setText('paydayLeft', fmtPayLeft(snap.paydayLeft));
+      setText('paydayWhen', fmtPayWhen(snap.payday, snap.today));
+    }
 
     // 日历
     setText('dayNo', String(snap.doneDays + (snap.isWorkday ? 1 : 0)));
@@ -2238,14 +2291,18 @@ var Guliqi = (function () {
      初始窗口 900 高是拍脑袋给的，内容经常用不满，底栏下面空一大块。
      启动后把页面实际高度报给桌面层（fit_window），由它把窗口收到刚好。
      量两次：渲染完一次，字体加载/首帧稳定后再补一次；一个会话最多两次，
-     之后窗口归用户管，手动拉大拉小都不打扰。 */
+     之后窗口归用户管，手动拉大拉小都不打扰。
+
+     用户自己拖过窗口（桌面层记住了尺寸）就一次都不收——他要多大就多大。 */
+  var winSaved = false;      // 桌面层是否存着上次的窗口尺寸
   var fitCount = 0;
   function fitWindow() {
-    if (!desk.ready() || fitCount >= 2) return;
+    // 次数上限只在 fitWindowSoon 里卡：这里再判 >= 2 会把第二次补量直接吞掉
+    if (!desk.ready() || winSaved) return;
     desk.send('fit_window', Math.ceil(document.documentElement.scrollHeight));
   }
   function fitWindowSoon(delay) {
-    if (fitCount >= 2) return;
+    if (winSaved || fitCount >= 2) return;
     fitCount++;
     setTimeout(fitWindow, delay);
   }
@@ -2333,6 +2390,59 @@ var Guliqi = (function () {
   $('panelTabs').addEventListener('click', function (e) {
     var b = e.target && e.target.closest ? e.target.closest('button') : null;
     if (b) switchTab(b.getAttribute('data-pane'));
+  });
+
+  /* ---------- 面板高度固定 ----------
+     六页长短不一，以前切标签面板会整体变高变矮，看着像在跳。现在量「工时」
+     那一页的自然高度，把它写成内容区的固定高度：其余页撑满同一块，切页零跳动。
+     窄窗口下工时页本来就装不下，那块高度会被面板的 max-height 压小，
+     内容在内部滚动（滚动条不画）。窗口大小变了要重测——不在工时页时克隆一份
+     到画布外量，不会闪。 */
+  function panelBodyHeight() {
+    var body = panel.querySelector('.panel-body');
+    var work = panel.querySelector('.tab-pane[data-pane="work"]');
+    if (!body || !work) return 0;
+    var cs = getComputedStyle(body);
+    var padH = parseFloat(cs.paddingLeft || 0) + parseFloat(cs.paddingRight || 0);
+    var padV = parseFloat(cs.paddingTop || 0) + parseFloat(cs.paddingBottom || 0);
+    var probe = work.cloneNode(true);
+    probe.removeAttribute('id');
+    var ids = probe.querySelectorAll('[id]');
+    for (var i = 0; i < ids.length; i++) ids[i].removeAttribute('id');
+    // overflow:hidden 让探针自己成为 BFC：最后一项的下边距也算进高度，
+    // 否则量出来会比真实内容矮十来像素，滚动条边界刚好卡在最后一行上。
+    // height:auto 抵掉克隆来的 height:100%——不然探针会被面板自身高度拉伸，
+    // 量出个"跟面板一样高"，越量越大，最后永远顶到上限。
+    probe.style.cssText = 'display:block;position:absolute;left:-9999px;top:0;visibility:hidden;'
+      + 'overflow:hidden;height:auto;width:' + Math.max(120, body.clientWidth - padH) + 'px';
+    body.appendChild(probe);
+    var h = probe.offsetHeight;
+    body.removeChild(probe);
+    return h + padV;
+  }
+
+  function fitPanelBody() {
+    var body = panel.querySelector('.panel-body');
+    if (!body) return;
+    // 首次引导只有一页、也没有标签栏，让它按内容自然高就行
+    if (panel.classList.contains('setup')) { body.style.height = ''; return; }
+    var head = panel.querySelector('.panel-head');
+    var tabs = panel.querySelector('.panel-tabs');
+    var acts = panel.querySelector('.panel-actions');
+    var ratio = window.matchMedia('(min-width:720px)').matches ? 0.86 : 0.88;
+    var chrome = (head ? head.offsetHeight : 0) + (tabs ? tabs.offsetHeight : 0)
+               + (acts ? acts.offsetHeight : 0);
+    var cap = Math.floor(window.innerHeight * ratio) - chrome - 2;   // 2 = 面板上下边框
+    if (cap < 160) cap = 160;
+    var need = panelBodyHeight() || cap;
+    body.style.height = Math.min(need, cap) + 'px';
+  }
+
+  var panelFitTimer = null;
+  window.addEventListener('resize', function () {
+    if (!sheet.classList.contains('open')) return;
+    if (panelFitTimer) clearTimeout(panelFitTimer);
+    panelFitTimer = setTimeout(fitPanelBody, 120);
   });
 
   function paintWeek() {
@@ -2451,8 +2561,8 @@ var Guliqi = (function () {
       $('fEnd').value = cfg.work_end;
       $('fBreakS').value = cfg.break_start;
       $('fBreakE').value = cfg.break_end;
-      $('fPayDay').value = cfg.pay_day;
-      $('fPayTime').value = cfg.pay_time;
+      $('fPayDay').value = cfg.pay_day ? cfg.pay_day : '';
+      $('fPayTime').value = cfg.pay_time || '';
       draftWeek = cfg.work_weekdays.slice();
     }
     paintWeek();
@@ -2469,7 +2579,9 @@ var Guliqi = (function () {
     loadDeskOpts();          // 桌面版：刷新开机启动 / 检查更新的真实状态
     switchTab('work');       // 每次打开都从第一页开始，别停在上次那一页
     sheet.classList.add('open');
+    fitPanelBody();          // 六页共用「工时」那一页的高度，切页不再跳
     syncLock();
+    if (!firstRun) refreshUpdateRow();   // 每次打开设置都查一遍有没有新版本
     if (firstRun) setTimeout(function () { try { $('fSalary').focus(); } catch (e) {} }, 260);
   }
 
@@ -2578,14 +2690,20 @@ var Guliqi = (function () {
       ok = false;
     }
 
-    // 发薪日：1-31 的整数 + 一个时间。两个都可能为空（用户删掉了），一起判
+    /* 发薪日：两格都留空 = 不要发薪倒计时，合法；只填一格要提示补全。
+       填了就得是 1-31 的整数，外加一个到账时间。 */
     var pdRaw = String($('fPayDay').value || '').trim();
-    var pd = /^\d{1,2}$/.test(pdRaw) ? parseInt(pdRaw, 10) : NaN;
-    if (!(pd >= 1 && pd <= 31)) {
-      showErr('payErr', pdRaw ? '发薪日要填 1 到 31 之间的整数' : '填一下每月几号发工资', $('fPayDay'));
+    var ptRaw = String($('fPayTime').value || '').trim();
+    if (!pdRaw && !ptRaw) {
+      // 都留空：主界面不显示这一行，通过
+    } else if (!pdRaw) {
+      showErr('payErr', '每月几号发工资要填一下，或者两格都留空', $('fPayDay'));
       ok = false;
-    } else if (toMin($('fPayTime').value) === null) {
-      showErr('payErr', '发薪时间也要填（几点到账）', $('fPayTime'));
+    } else if (!/^\d{1,2}$/.test(pdRaw) || !(parseInt(pdRaw, 10) >= 1 && parseInt(pdRaw, 10) <= 31)) {
+      showErr('payErr', '发薪日要填 1 到 31 之间的整数', $('fPayDay'));
+      ok = false;
+    } else if (!ptRaw) {
+      showErr('payErr', '发薪时间也要填（几点到账），或者两格都留空', $('fPayTime'));
       ok = false;
     }
     return ok;
@@ -2610,8 +2728,8 @@ var Guliqi = (function () {
       work_end: $('fEnd').value,
       break_start: $('fBreakS').value,
       break_end: $('fBreakE').value,
-      pay_day: parseInt(String($('fPayDay').value).trim(), 10),
-      pay_time: $('fPayTime').value,
+      pay_day: String($('fPayDay').value || '').trim() ? parseInt(String($('fPayDay').value).trim(), 10) : 0,
+      pay_time: String($('fPayDay').value || '').trim() ? $('fPayTime').value : '',
       work_weekdays: draftWeek,
       holidays: $('fHolidays').value,
       makeup_workdays: $('fMakeup').value,
@@ -2889,9 +3007,75 @@ var Guliqi = (function () {
     if (v) {
       $('verNum').textContent = 'v' + v;
       $('aboutVer').textContent = 'v' + v;
+      $('aboutCur').textContent = 'v' + v;
     }
-    if (opts && opts.db) $('aboutDb').textContent = opts.db;
+    if (opts && opts.data_dir) $('aboutDir').textContent = opts.data_dir;
   }
+
+  /* 「更新」那一行：每次打开设置都静默查一遍（不进托盘通知）。
+     有新版本 → 按钮变「点击下载新版」，点了开 Release；
+     已是最新 → 变成不可点的「已经是最新版本」。 */
+  var aboutUpdateUrl = '';
+
+  function paintUpdateRow(info) {
+    var btn = $('aboutUpdate');
+    if (!btn) return;
+    if (info && info.at) lastUpdateAt = info.at;
+    if (info && info.current) {
+      $('aboutCur').textContent = 'v' + info.current;
+      $('aboutVer').textContent = 'v' + info.current;
+    }
+    aboutUpdateUrl = '';
+    if (info && info.newer && info.tag) {
+      aboutUpdateUrl = info.url || '';
+      btn.textContent = '点击下载新版';
+      btn.disabled = false;
+      btn.title = '下载 ' + info.tag;
+    } else {
+      btn.textContent = '已经是最新版本';
+      btn.disabled = true;
+      btn.title = '';
+    }
+  }
+
+  function refreshUpdateRow() {
+    var btn = $('aboutUpdate');
+    if (!btn) return;
+    if (!desk.ready()) { btn.textContent = '桌面版才能检查更新'; btn.disabled = true; return; }
+    btn.textContent = '检查中…';
+    btn.disabled = true;
+    btn.title = '';
+    var base = lastUpdateAt;
+    desk.send('check_update_quiet');
+    var tries = 0;
+    (function wait() {
+      tries++;
+      var p = desk.call('poll_update');
+      if (!p || typeof p.then !== 'function') {
+        btn.textContent = '检查更新失败';
+        btn.disabled = false;
+        return;
+      }
+      p.then(function (info) {
+        if (info && info.at && info.at > base) paintUpdateRow(info);
+        else if (tries < 12) setTimeout(wait, 600);
+        else { btn.textContent = '检查超时，点此重试'; btn.disabled = false; }
+      }, function () {
+        btn.textContent = '检查更新失败';
+        btn.disabled = false;
+      });
+    })();
+  }
+
+  $('aboutUpdate').addEventListener('click', function () {
+    if (aboutUpdateUrl) { desk.send('open_url', aboutUpdateUrl); return; }
+    refreshUpdateRow();
+  });
+
+  $('aboutDir').addEventListener('click', function () {
+    if (!desk.ready()) { toast('桌面版才能打开目录'); return; }
+    desk.send('open_data_dir');
+  });
 
   // 「关于」里的链接按钮：统一交给桌面层用系统浏览器打开（只放行 github.com）
   panel.addEventListener('click', function (e) {
@@ -3081,6 +3265,8 @@ var Guliqi = (function () {
     if (!p || typeof p.then !== 'function') { bootLocal(); return; }
     p.then(function (res) {
       if (!res) { bootLocal(); return; }
+      // 桌面层记着上次窗口尺寸的话，这次就不自动收窗口了
+      if (res.win_saved) winSaved = true;
       if (res.ready) {
         adopt(res.cfg);
       } else if (G.hasSaved()) {

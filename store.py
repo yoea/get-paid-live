@@ -202,6 +202,9 @@ def load_cfg():
                 "work_end": "hhmm",
                 "break_start": "hhmm",
                 "break_end": "hhmm",
+                # 发薪日：0 / 空 = 用户留空，不显示发薪倒计时（键照存，别丢掉这个选择）
+                "pay_day": "num",
+                "pay_time": "hhmm",
                 "theme": "text",
                 "demo": "bool",
                 "demo_offset": "num",
@@ -263,6 +266,16 @@ def save_cfg(cfg):
                     _set(conn, "cfg." + key, parsed)
             if "monthly_salary" in cfg:
                 _set(conn, "cfg.monthly_salary", repr(max(0.0, _num(cfg.get("monthly_salary")))))
+            if "pay_day" in cfg:
+                # 留空存 0：load 时原样交回界面，界面据此把发薪倒计时整行收起
+                try:
+                    pd = int(round(float(cfg.get("pay_day") or 0)))
+                except (TypeError, ValueError):
+                    pd = 0
+                _set(conn, "cfg.pay_day", str(pd if 1 <= pd <= 31 else 0))
+            if "pay_time" in cfg:
+                raw_pt = str(cfg.get("pay_time") or "").strip()
+                _set(conn, "cfg.pay_time", _hhmm(raw_pt) if raw_pt else "")
             if "theme" in cfg:
                 theme = cfg.get("theme")
                 _set(conn, "cfg.theme", theme if theme in ("system", "light", "dark") else "system")
@@ -367,6 +380,42 @@ def save_opts(data):
 
 def set_opt(key, value):
     return save_opts({key: value})
+
+
+# ---------------------------------------------------------------- 窗口尺寸
+
+# 和 desktop.py 的 min_size 保持一致：小于这个值一定是脏数据
+WIN_MIN_W, WIN_MIN_H = 400, 620
+
+
+def load_window():
+    """上次退出时的窗口大小 (w, h)。没有记录或值不合理就返回 (0, 0)。"""
+    try:
+        with _connect() as conn:
+            w = int(_num(_get(conn, "desk.win_w"), 0))
+            h = int(_num(_get(conn, "desk.win_h"), 0))
+    except (sqlite3.Error, ValueError, TypeError):
+        return (0, 0)
+    if w < WIN_MIN_W or h < WIN_MIN_H or w > 10000 or h > 10000:
+        return (0, 0)
+    return (w, h)
+
+
+def save_window(width, height):
+    """记住窗口大小。值不合理就直接放弃，别把 0×0 写进库。"""
+    try:
+        w, h = int(width), int(height)
+    except (TypeError, ValueError):
+        return False
+    if w < WIN_MIN_W or h < WIN_MIN_H or w > 10000 or h > 10000:
+        return False
+    try:
+        with _connect() as conn:
+            _set(conn, "desk.win_w", str(w))
+            _set(conn, "desk.win_h", str(h))
+        return True
+    except sqlite3.Error:
+        return False
 
 
 # ---------------------------------------------------------------- 日历备注
