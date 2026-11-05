@@ -566,6 +566,26 @@ def notify(title, message):
         return False
 
 
+def register_aumid_display():
+    """把 AUMID 的显示名写进注册表（HKCU，只动本用户）。
+
+    通知中心左上角的"发件人"名字解析自 AUMID 的 DisplayString；从没注册过
+    的话，Windows 就把 AUMID 原串亮出来——看着就是一串 ewing.xxx。
+    写上 TITLE 之后通知一律显示成「上班鼓励器」。写一次长期有效，失败
+    静默：顶多名字难看，不影响任何功能。
+    """
+    try:
+        import winreg
+
+        key_path = r"Software\Classes\AppUserModelId" + "\\" + APP_ID
+        with winreg.CreateKeyEx(
+            winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE
+        ) as key:
+            winreg.SetValueEx(key, "DisplayString", 0, winreg.REG_SZ, TITLE)
+    except Exception:
+        pass
+
+
 # ---------------------------------------------------------------- 到点提醒
 
 def notify_enabled():
@@ -822,11 +842,14 @@ def _ver_tuple(text):
     return tuple(parts)
 
 
-def check_update(manual=False, quiet=False):
+def check_update(manual=False, quiet=False, silent=False):
     """查 GitHub 上最新一个 Release。失败一律静默：连不上网不该弹框骚扰人。
 
     quiet=True 是"打开设置时顺手看一眼"用的：照样联网查，但不发系统通知
     （用户只是打开设置，不该每次都被弹一下）。
+    silent=True 是"界面里点版本号手动查"用的：结果完全由界面自己呈现
+    （有新版弹模态框、已是最新弹 toast），系统通知反而多余。
+    托盘菜单里的"检查更新"仍走系统通知——那个入口没有界面可看。
     """
     if not manual and not load_options().get("check_update", True):
         return None
@@ -852,12 +875,12 @@ def check_update(manual=False, quiet=False):
             "at": time.time(),
         }
     except Exception:
-        if manual and not quiet:
+        if manual and not quiet and not silent:
             notify("检查更新失败", "网络不通，待会儿再点一次。")
         return None
 
     state.update = info
-    if manual and not quiet:
+    if manual and not quiet and not silent:
         if info["newer"]:
             notify("有新版 " + info["tag"], "打开主界面就能看到下载入口。")
         else:
@@ -1015,8 +1038,9 @@ class Api(object):
         return state.update
 
     def check_update_now(self):
+        # silent：界面自己会弹模态框/toast 呈现结果，别再发系统通知
         threading.Thread(
-            target=check_update, kwargs={"manual": True}, daemon=True
+            target=check_update, kwargs={"manual": True, "silent": True}, daemon=True
         ).start()
         return True
 
@@ -1136,6 +1160,8 @@ def main():
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
     except Exception:
         pass
+    # 通知中心里的"发件人"显示成「上班鼓励器」，而不是一串 AUMID 原文
+    register_aumid_display()
 
     # 先做单实例仲裁：已经有旧的一份在跑就把它换掉，同版本/更新的就把它的窗口
     # 叫到前面。这一步放最前面，免得第二个实例白弹一堆检查框。

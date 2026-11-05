@@ -571,8 +571,8 @@ input[type=number]{-moz-appearance:textfield}
   background:var(--inset);color:var(--faint);font-size:14px;font-family:inherit;cursor:pointer;transition:.15s;
 }
 .wd button.on{background:rgba(74,222,159,.15);border-color:rgba(74,222,159,.38);color:var(--mint-fg);font-weight:650}
-/* 主题三选一：分段控件，比下拉更少点击、也不会开原生菜单盖住面板 */
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border:1px solid var(--line);border-radius:11px;background:var(--inset)}
+/* 主题选择：分段控件（3 个默认 + 5 个彩色主题，4 列两行），比下拉更少点击、也不会开原生菜单盖住面板 */
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;border:1px solid var(--line);border-radius:11px;background:var(--inset)}
 .seg button{
   display:flex;align-items:center;justify-content:center;gap:5px;
   padding:8px 4px;border-radius:8px;border:1px solid transparent;background:none;
@@ -585,6 +585,9 @@ input[type=number]{-moz-appearance:textfield}
 }
 .seg button svg{width:13px;height:13px;flex:0 0 auto}
 .seg button.on svg{color:var(--gold)}
+/* 彩色主题按钮前面的小色卡 */
+.seg .sw{width:13px;height:13px;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.seg button.on .sw{box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),0 0 8px rgba(0,0,0,.2)}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--inset)}
 .switch .t{font-size:13.5px}
 .switch .d{font-size:11px;color:var(--faint);margin-top:3px;line-height:1.5}
@@ -787,6 +790,164 @@ html.lock{overflow:hidden}
 /* 浅色下白面板压在白灰蒙层上只靠边框分不开，补一层柔光让它浮起来 */
 :root[data-theme=light] .panel{box-shadow:0 24px 70px rgba(16,24,38,.2)}
 
+/* ---------- 彩色主题 ----------
+   五个带背景动画的主题：data-accent 挂在 <html> 上，只覆盖语义变量，
+   组件规则一条不重写。aurora/sunset/galaxy 用深色底，sakura/mint 用浅色底，
+   所以它们天然继承上面对应明暗的全部变量，这里只换强调色和背景。
+   注意：这几块必须放在浅色块后面，浅色底的主题才能盖住浅色的金色调。
+   粒子动画的配方在 ui.js 的 FX_PRESETS 里，跟这里一一对应。 */
+
+/* 极光夜：深夜蓝绿底，青 + 紫极光晕 */
+:root[data-accent=aurora]{
+  --bg:#041018;
+  --gold:#5eead4;
+  --gold-2:#99f6e4;
+  --amber:#7dd3fc;
+  --cyan:#22d3ee;
+  --violet:#c4b5fd;
+  --hero-grad-a:#ccfbf1;
+  --gold-tint:rgba(94,234,212,.07);
+  --gold-tint-2:rgba(94,234,212,.13);
+  --gold-tint-3:rgba(94,234,212,.22);
+  --gold-line:rgba(94,234,212,.3);
+  --gold-line-2:rgba(94,234,212,.42);
+  --mask:rgba(1,10,14,.74);
+}
+:root[data-accent=aurora] body{
+  background:
+    radial-gradient(900px 520px at 14% -12%,rgba(45,212,191,.16),transparent 62%),
+    radial-gradient(780px 460px at 88% -6%,rgba(139,92,246,.15),transparent 58%),
+    radial-gradient(1000px 620px at 50% 112%,rgba(16,185,129,.10),transparent 60%),
+    var(--bg);
+}
+:root[data-accent=aurora] .btn.primary{background:linear-gradient(135deg,#99f6e4,#2dd4bf);color:#03231d}
+
+/* 落日橙：暖棕黑底，橙红火烧云 */
+:root[data-accent=sunset]{
+  --bg:#150a05;
+  --gold:#ffa94d;
+  --gold-2:#ffc078;
+  --amber:#ff8787;
+  --cyan:#fcc419;
+  --violet:#e599f7;
+  --hero-grad-a:#ffe8cc;
+  --gold-tint:rgba(255,169,77,.08);
+  --gold-tint-2:rgba(255,169,77,.14);
+  --gold-tint-3:rgba(255,169,77,.22);
+  --gold-line:rgba(255,169,77,.32);
+  --gold-line-2:rgba(255,169,77,.44);
+  --mask:rgba(16,6,2,.74);
+}
+:root[data-accent=sunset] body{
+  background:
+    radial-gradient(900px 520px at 12% -12%,rgba(249,115,22,.18),transparent 62%),
+    radial-gradient(760px 440px at 90% -6%,rgba(239,68,68,.13),transparent 58%),
+    radial-gradient(900px 560px at 50% 112%,rgba(250,204,21,.09),transparent 60%),
+    var(--bg);
+}
+:root[data-accent=sunset] .btn.primary{background:linear-gradient(135deg,#ffd8a8,#ff922b);color:#341a03}
+
+/* 星河紫：深紫夜空底，星屑慢闪 */
+:root[data-accent=galaxy]{
+  --bg:#0a0616;
+  --gold:#c4b5fd;
+  --gold-2:#ddd6fe;
+  --amber:#f0abfc;
+  --cyan:#a5b4fc;
+  --violet:#818cf8;
+  --hero-grad-a:#ede9fe;
+  --gold-tint:rgba(196,181,253,.08);
+  --gold-tint-2:rgba(196,181,253,.14);
+  --gold-tint-3:rgba(196,181,253,.22);
+  --gold-line:rgba(196,181,253,.32);
+  --gold-line-2:rgba(196,181,253,.44);
+  --mask:rgba(6,3,16,.74);
+}
+:root[data-accent=galaxy] body{
+  background:
+    radial-gradient(900px 520px at 15% -12%,rgba(139,92,246,.17),transparent 62%),
+    radial-gradient(760px 440px at 88% -6%,rgba(59,130,246,.14),transparent 58%),
+    radial-gradient(900px 560px at 50% 112%,rgba(217,70,239,.09),transparent 60%),
+    var(--bg);
+}
+:root[data-accent=galaxy] .btn.primary{background:linear-gradient(135deg,#ddd6fe,#a78bfa);color:#1e103d}
+
+/* 樱花粉：近白粉底，花瓣下落 */
+:root[data-accent=sakura]{
+  --bg:#fdf4f6;
+  --surface:#ffffff;
+  --inset:#f9edf1;
+  --raise:#f4e3e9;
+  --line:#efd7df;
+  --line-soft:#f5e6eb;
+  --line-hover:#dcb6c4;
+  --line-focus:#c493a7;
+  --text:#2b1a21;
+  --dim:#7c5f6b;
+  --faint:#a98d99;
+  --tag:#ab8e9a;
+  --gold:#c2255c;
+  --gold-2:#a61e4d;
+  --amber:#d6336c;
+  --mint:#0ca678;
+  --cyan:#1971c2;
+  --violet:#9c36b5;
+  --hero-grad-a:#a61e4d;
+  --grab:#e8ccd6;
+  --gold-tint:rgba(194,37,92,.08);
+  --gold-tint-2:rgba(194,37,92,.13);
+  --gold-tint-3:rgba(194,37,92,.2);
+  --gold-line:rgba(194,37,92,.3);
+  --gold-line-2:rgba(194,37,92,.42);
+  --mask:rgba(43,26,33,.42);
+}
+:root[data-accent=sakura] body{
+  background:
+    radial-gradient(880px 500px at 10% -14%,rgba(244,114,182,.20),transparent 62%),
+    radial-gradient(720px 420px at 94% -6%,rgba(196,181,253,.16),transparent 58%),
+    var(--bg);
+}
+:root[data-accent=sakura] .hero::before{background:radial-gradient(560px 190px at 0% -10%,rgba(194,37,92,.06),transparent 66%)}
+:root[data-accent=sakura] .btn.primary{background:linear-gradient(135deg,#ffd3e2,#ff8fb3);color:#4a0d24}
+
+/* 薄荷绿：近白绿底，气泡上浮 */
+:root[data-accent=mint]{
+  --bg:#f2faf5;
+  --surface:#ffffff;
+  --inset:#eaf5ef;
+  --raise:#e0efe7;
+  --line:#d6e8de;
+  --line-soft:#e6f2ec;
+  --line-hover:#b3d2c2;
+  --line-focus:#8bb8a1;
+  --text:#15271e;
+  --dim:#4f6b5d;
+  --faint:#7f9a8b;
+  --tag:#7f9a8b;
+  --gold:#0c8a56;
+  --gold-2:#096e45;
+  --amber:#c2620e;
+  --mint:#059669;
+  --cyan:#0e7490;
+  --violet:#6d4bd8;
+  --hero-grad-a:#085d3f;
+  --grab:#cfe4d8;
+  --gold-tint:rgba(12,138,86,.09);
+  --gold-tint-2:rgba(12,138,86,.14);
+  --gold-tint-3:rgba(12,138,86,.2);
+  --gold-line:rgba(12,138,86,.3);
+  --gold-line-2:rgba(12,138,86,.42);
+  --mask:rgba(21,39,30,.4);
+}
+:root[data-accent=mint] body{
+  background:
+    radial-gradient(880px 500px at 10% -14%,rgba(16,185,129,.16),transparent 62%),
+    radial-gradient(720px 420px at 94% -6%,rgba(45,212,191,.12),transparent 58%),
+    var(--bg);
+}
+:root[data-accent=mint] .hero::before{background:radial-gradient(560px 190px at 0% -10%,rgba(12,138,86,.06),transparent 66%)}
+:root[data-accent=mint] .btn.primary{background:linear-gradient(135deg,#a7f3d0,#34d399);color:#03301f}
+
 /* ---------- 大屏模式 ----------
    桌面壳检测到窗口接近铺满主屏（最大化或拖得很大）时给 <html> 加 bigscreen。
    此时内容吃满窗口高度：卡片、日历格子自然长高，版心加宽，关键数字放大。
@@ -813,19 +974,26 @@ html.bigscreen .day i{font-size:10px}
 </style>
 <script>
 /* 主题必须在第一帧之前定下来，否则深色用户每次启动都会看见一瞬白底。
-   所以这里直接读 localStorage 的原始值，不经过 Guliqi.normalize（那时引擎还没加载）。 */
+   所以这里直接读 localStorage 的原始值，不经过 Guliqi.normalize（那时引擎还没加载）。
+   彩色主题名单跟 engine.js 的 THEME_LIST 保持一致（这边要赶在引擎加载前用，只能各放一份）。 */
 (function () {
+  var BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light' };
   var mode = 'system';
   try {
     var s = localStorage.getItem('guliqi.cfg.v1');
     if (s) {
       var o = JSON.parse(s);
-      if (o && (o.theme === 'light' || o.theme === 'dark')) mode = o.theme;
+      if (o && (o.theme === 'light' || o.theme === 'dark' || BASE[o.theme])) mode = o.theme;
     }
   } catch (e) {}
-  var dark = mode === 'dark'
-    || (mode === 'system' && (!window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches));
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var accent = BASE[mode] ? mode : '';
+  var dark = accent
+    ? BASE[accent] === 'dark'
+    : (mode === 'dark'
+      || (mode === 'system' && (!window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches)));
+  var root = document.documentElement;
+  root.setAttribute('data-theme', dark ? 'dark' : 'light');
+  if (accent) root.setAttribute('data-accent', accent);
 })();
 </script>
 </head>
@@ -979,13 +1147,26 @@ html.bigscreen .day i{font-size:10px}
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.11</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.12</button>
     </div>
   </footer>
 </div>
 
 <!-- 全局 toast：查更新结果等一次性提示 -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- 手动检查更新发现新版本时弹的框：要不要现在去下载 -->
+<div class="notepop" id="updatePop">
+  <div class="mask" id="updatePopMask"></div>
+  <div class="box" role="dialog" aria-modal="true" aria-label="发现新版本">
+    <h3>发现新版本 <span id="updPopTag">--</span></h3>
+    <p class="sub">当前版本 <span id="updPopCur">--</span>，新版本已经发布，要现在去下载吗？</p>
+    <div class="acts">
+      <button class="btn cancel" id="updPopLater" type="button">暂不更新</button>
+      <button class="btn primary" id="updPopGo" type="button">去下载</button>
+    </div>
+  </div>
+</div>
 
 <!-- ================= 设置面板 ================= -->
 <div class="sheet" id="sheet">
@@ -1107,8 +1288,13 @@ html.bigscreen .day i{font-size:10px}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 1 1 9.2 3.5a6.9 6.9 0 0 0 11.3 11.3z"></path></svg>
           深色
         </button>
+        <button type="button" data-theme-opt="aurora"><span class="sw" style="background:linear-gradient(135deg,#5eead4,#a78bfa)"></span>极光夜</button>
+        <button type="button" data-theme-opt="sakura"><span class="sw" style="background:linear-gradient(135deg,#ffa8c5,#f472b6)"></span>樱花粉</button>
+        <button type="button" data-theme-opt="sunset"><span class="sw" style="background:linear-gradient(135deg,#ffd43b,#ff6b6b)"></span>落日橙</button>
+        <button type="button" data-theme-opt="mint"><span class="sw" style="background:linear-gradient(135deg,#a7f3d0,#10b981)"></span>薄荷绿</button>
+        <button type="button" data-theme-opt="galaxy"><span class="sw" style="background:linear-gradient(135deg,#c4b5fd,#818cf8)"></span>星河紫</button>
       </div>
-      <div class="hint">默认跟随系统。系统在白天/夜间之间切换时，界面会自己跟着变；点一下立刻预览，点保存才记住。</div>
+      <div class="hint">默认跟随系统，白天/夜间切换时界面自己跟着变；后五个是带背景动画的彩色主题。点一下立刻预览，点保存才记住。</div>
     </div>
 
     <div class="field adv-field">
@@ -1338,9 +1524,16 @@ var Guliqi = (function () {
       { name: '一次旅行', price: 10000 }
     ],
     display: { hide_money: false },
-    theme: 'system',   // 'system' | 'light' | 'dark'
+    theme: 'system',   // 见 THEME_LIST：三个默认值 + 五个彩色主题
     demo: false,
     demo_offset: 0     // 演示时钟相对真实时间的偏移（毫秒），0 = 不偏移
+  };
+
+  // 彩色主题清单：aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 / galaxy 星河紫。
+  // 随返回对象导出，head 防闪脚本和 ui.js 共用这一份，别处不要再抄第二份名单。
+  var THEME_LIST = {
+    system: 1, light: 1, dark: 1,
+    aurora: 1, sakura: 1, sunset: 1, mint: 1, galaxy: 1
   };
 
   /* ---------- 小工具 ---------- */
@@ -1472,8 +1665,8 @@ var Guliqi = (function () {
     cfg.makeup_workdays = parseDates(cfg.makeup_workdays);
     cfg.items = parseItems(cfg.items);
     cfg.demo = !!cfg.demo;
-    // 主题只认这三个值，脏数据（null / 数字 / 乱写的字符串）一律退回跟随系统
-    cfg.theme = (cfg.theme === 'light' || cfg.theme === 'dark') ? cfg.theme : 'system';
+    // 主题白名单：三个默认值 + 五个彩色主题，脏数据一律退回跟随系统
+    cfg.theme = THEME_LIST[cfg.theme] ? cfg.theme : 'system';
     // 偏移限制在 ±2 天内，防止脏数据把时钟甩到离谱的年份
     cfg.demo_offset = Math.max(-172800000, Math.min(172800000, Math.round(toNum(cfg.demo_offset, 0))));
     if (!cfg.demo) cfg.demo_offset = 0;
@@ -1841,6 +2034,7 @@ var Guliqi = (function () {
   return {
     DEFAULT_CFG: DEFAULT_CFG,
     STORE_KEY: STORE_KEY,
+    THEME_LIST: THEME_LIST,
     normalize: normalize,
     loadCfg: loadCfg,
     saveCfg: saveCfg,
@@ -2010,24 +2204,39 @@ var Lunar = (function () {
   var titleTick = 0;
 
   /* ---------- 主题 ----------
-     三种模式：system（跟随系统）/ light / dark。
-     head 里那段内联脚本已经在首帧之前画过一次，这里只负责之后的变化
-     （用户改设置、系统明暗切换时）。 */
+     三种默认模式：system（跟随系统）/ light / dark，外加五个彩色主题
+     （aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 / galaxy 星河紫）。
+     名单以 engine.js 的 G.THEME_LIST 为准。
+     彩色主题 = 底色（深或浅）+ data-accent 挂的配色覆盖：
+       aurora / sunset / galaxy 用深色底，sakura / mint 用浅色底。
+     head 里那段内联脚本已经在首帧之前画过一次，这里只负责之后的变化。 */
   var themeMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   var draftTheme = cfg.theme;      // 面板里点中但还没保存的值
+  // 彩色主题名 → 底色（决定 data-theme 是深是浅，CSS 变量覆盖挂在 data-accent 上）
+  var THEME_BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light' };
+  // 彩色主题的标题栏/任务栏颜色，跟各自 --bg 对应
+  var ACCENT_META = {
+    aurora: '#041018', sunset: '#150a05', galaxy: '#0a0616',
+    sakura: '#fdf4f6', mint: '#f2faf5'
+  };
 
   function sysIsDark() {
     return !!(themeMQ && themeMQ.matches);
   }
 
   function applyTheme(mode) {
-    var m = (mode === 'light' || mode === 'dark') ? mode : 'system';
-    var dark = (m === 'dark') || (m === 'system' && sysIsDark());
+    var m = G.THEME_LIST[mode] ? mode : 'system';
+    var accent = THEME_BASE[m] ? m : '';
+    var dark = accent
+      ? THEME_BASE[m] === 'dark'
+      : (m === 'dark') || (m === 'system' && sysIsDark());
     var root = document.documentElement;
     root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    if (accent) root.setAttribute('data-accent', accent);
+    else root.removeAttribute('data-accent');
     // 手机/独立窗口的标题栏、任务栏跳转列表都读这个
     var meta = document.querySelector('meta[name=theme-color]');
-    if (meta) meta.setAttribute('content', dark ? '#07090d' : '#f5f6f8');
+    if (meta) meta.setAttribute('content', accent ? ACCENT_META[accent] : (dark ? '#07090d' : '#f5f6f8'));
     root.style.colorScheme = dark ? 'dark' : 'light';
     paintThemeBtn(dark);
   }
@@ -3130,6 +3339,28 @@ var Lunar = (function () {
     $('updateBar').classList.remove('on');
   });
 
+  /* ---------- 手动查更新用的模态框 ----------
+     右下角点版本号检查更新，发现新版直接弹框问「要不要去下载」，
+     不再走顶部那条长提示（长提示留给启动/轮询这种被动发现）。
+     弹框的同时把 updateDismissed 记上，顶部条这次就别再冒出来了。 */
+  function showUpdateModal(info) {
+    updateTag = info.tag;
+    updateUrl = info.url || '';
+    updateDismissed = info.tag;
+    $('updPopTag').textContent = info.tag;
+    $('updPopCur').textContent = 'v' + (info.current || '');
+    $('updatePop').classList.add('open');
+  }
+  function closeUpdateModal() {
+    $('updatePop').classList.remove('open');
+  }
+  $('updPopGo').addEventListener('click', function () {
+    closeUpdateModal();
+    if (updateUrl) desk.send('open_url', updateUrl);
+  });
+  $('updPopLater').addEventListener('click', closeUpdateModal);
+  $('updatePopMask').addEventListener('click', closeUpdateModal);
+
   function pollUpdate() {
     var p = desk.call('poll_update');
     if (!p || typeof p.then !== 'function') return;
@@ -3176,7 +3407,7 @@ var Lunar = (function () {
             btn.classList.remove('busy');
             btn.textContent = 'v' + (info.current || baseVer.replace(/^v/, ''));
             lastUpdateAt = info.at;
-            if (info.newer) { showUpdate(info); toast('发现新版本 ' + info.tag); }
+            if (info.newer) showUpdateModal(info);   // 发现新版：弹框问要不要去下载
             else toast('已是最新版本 v' + (info.current || ''));
           } else if (tries < 16) {
             setTimeout(wait, 700);
@@ -3333,25 +3564,49 @@ var Lunar = (function () {
     var W = 0, H = 0;
     var N = 46, ps = [];
 
-    // 两套配色各取一半：深色主题是金/青微光，浅色主题压深成淡金/淡蓝灰
+    // 默认深/浅色的粒子配色（无彩色主题时按 data-theme 二选一）
     var COLORS_DARK = ['255,200,87', '78,205,196', '255,236,170'];
     var COLORS_LIGHT = ['176,132,32', '70,150,146', '120,130,160'];
 
-    function palette() {
-      return document.documentElement.getAttribute('data-theme') === 'light' ? COLORS_LIGHT : COLORS_DARK;
+    /* 彩色主题各有自己的粒子配方：颜色、浓度、漂移速度、上浮/下落方向、颗粒大小。
+       vy 用 [min,max] 区间：负数上浮、正数下落（樱花粉是往下飘的）。 */
+    var FX_PRESETS = {
+      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.20, vy: [-0.12, -0.03], vx: 0.06, r: [1.0, 3.0] },
+      sakura: { colors: ['244,114,182', '251,146,160', '196,181,253'], alpha: 0.30, vy: [0.06, 0.22], vx: 0.18, r: [1.2, 2.8] },
+      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.22, vy: [-0.20, -0.06], vx: 0.10, r: [0.8, 2.4] },
+      mint:   { colors: ['16,185,129', '52,211,153', '153,246,228'], alpha: 0.20, vy: [-0.16, -0.05], vx: 0.08, r: [0.9, 2.4] },
+      galaxy: { colors: ['221,214,254', '165,180,252', '240,171,252'], alpha: 0.16, vy: [-0.02, 0.02], vx: 0.03, r: [0.5, 1.6] }
+    };
+
+    function fxConf() {
+      var a = document.documentElement.getAttribute('data-accent');
+      if (a && FX_PRESETS[a]) return FX_PRESETS[a];
+      var light = document.documentElement.getAttribute('data-theme') === 'light';
+      return {
+        colors: light ? COLORS_LIGHT : COLORS_DARK,
+        alpha: light ? 0.10 : 0.16,
+        vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6]
+      };
     }
-    function baseAlpha() {
-      return document.documentElement.getAttribute('data-theme') === 'light' ? 0.10 : 0.16;
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    // 主题切换后粒子还在按旧配方跑，靠 key 比对发现变了就整批重撒
+    var fxKey = '';
+    function fxSignature() {
+      var root = document.documentElement;
+      return (root.getAttribute('data-accent') || '') + '|' + (root.getAttribute('data-theme') || '');
     }
+
     function spawn(w, h) {
+      var c = fxConf();
       return {
         x: Math.random() * w, y: Math.random() * h,
-        r: 0.7 + Math.random() * 1.9,                                  // 半径（CSS px）
-        vx: (Math.random() - 0.5) * 0.10,                              // 水平漂移
-        vy: -(0.04 + Math.random() * 0.14),                            // 缓慢上浮
+        r: rand(c.r[0], c.r[1]),                                       // 半径（CSS px）
+        vx: (Math.random() - 0.5) * 2 * c.vx,                          // 水平漂移
+        vy: rand(c.vy[0], c.vy[1]),                                    // 上浮或下落
         tw: 0.4 + Math.random() * 0.9,                                 // 闪烁速度
         ph: Math.random() * Math.PI * 2,                               // 闪烁相位
-        c: Math.floor(Math.random() * 3)
+        c: Math.floor(Math.random() * c.colors.length)
       };
     }
     function resize() {
@@ -3372,18 +3627,24 @@ var Lunar = (function () {
     var running = false, rafId = 0;
     function frame(t) {
       rafId = 0;
-      var pal = palette(), A = baseAlpha();
+      var sig = fxSignature();
+      if (sig !== fxKey) {
+        fxKey = sig;
+        for (var s = 0; s < N; s++) ps[s] = spawn(W, H);
+      }
+      var conf = fxConf();
       ctx.clearRect(0, 0, W, H);
       for (var i = 0; i < N; i++) {
         var p = ps[i];
         p.x += p.vx; p.y += p.vy;
         if (p.y < -6) { p.y = H + 6; p.x = Math.random() * W; }
+        else if (p.y > H + 6) { p.y = -6; p.x = Math.random() * W; }
         if (p.x < -6) p.x = W + 6; else if (p.x > W + 6) p.x = -6;
-        var a = A * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
+        var a = conf.alpha * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
         if (a <= 0.01) continue;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, 6.2832);
-        ctx.fillStyle = 'rgba(' + pal[p.c] + ',' + a.toFixed(3) + ')';
+        ctx.fillStyle = 'rgba(' + conf.colors[p.c] + ',' + a.toFixed(3) + ')';
         ctx.fill();
       }
       if (running && !document.hidden) rafId = requestAnimationFrame(frame);
@@ -3428,10 +3689,10 @@ var Lunar = (function () {
   document.addEventListener('keydown', function (e) {
     var t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
-      if (e.key === 'Escape') closeSheet();
+      if (e.key === 'Escape') { closeUpdateModal(); closeSheet(); }
       return;
     }
-    if (e.key === 'Escape') closeSheet();
+    if (e.key === 'Escape') { closeUpdateModal(); closeSheet(); }
   });
 
   /* ---------- 启动 ----------

@@ -11,19 +11,26 @@
 <link rel="stylesheet" href="app.css">
 <script>
 /* 主题必须在第一帧之前定下来，否则深色用户每次启动都会看见一瞬白底。
-   所以这里直接读 localStorage 的原始值，不经过 Guliqi.normalize（那时引擎还没加载）。 */
+   所以这里直接读 localStorage 的原始值，不经过 Guliqi.normalize（那时引擎还没加载）。
+   彩色主题名单跟 engine.js 的 THEME_LIST 保持一致（这边要赶在引擎加载前用，只能各放一份）。 */
 (function () {
+  var BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light' };
   var mode = 'system';
   try {
     var s = localStorage.getItem('guliqi.cfg.v1');
     if (s) {
       var o = JSON.parse(s);
-      if (o && (o.theme === 'light' || o.theme === 'dark')) mode = o.theme;
+      if (o && (o.theme === 'light' || o.theme === 'dark' || BASE[o.theme])) mode = o.theme;
     }
   } catch (e) {}
-  var dark = mode === 'dark'
-    || (mode === 'system' && (!window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches));
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var accent = BASE[mode] ? mode : '';
+  var dark = accent
+    ? BASE[accent] === 'dark'
+    : (mode === 'dark'
+      || (mode === 'system' && (!window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches)));
+  var root = document.documentElement;
+  root.setAttribute('data-theme', dark ? 'dark' : 'light');
+  if (accent) root.setAttribute('data-accent', accent);
 })();
 </script>
 </head>
@@ -177,13 +184,26 @@
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.11</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.12</button>
     </div>
   </footer>
 </div>
 
 <!-- 全局 toast：查更新结果等一次性提示 -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- 手动检查更新发现新版本时弹的框：要不要现在去下载 -->
+<div class="notepop" id="updatePop">
+  <div class="mask" id="updatePopMask"></div>
+  <div class="box" role="dialog" aria-modal="true" aria-label="发现新版本">
+    <h3>发现新版本 <span id="updPopTag">--</span></h3>
+    <p class="sub">当前版本 <span id="updPopCur">--</span>，新版本已经发布，要现在去下载吗？</p>
+    <div class="acts">
+      <button class="btn cancel" id="updPopLater" type="button">暂不更新</button>
+      <button class="btn primary" id="updPopGo" type="button">去下载</button>
+    </div>
+  </div>
+</div>
 
 <!-- ================= 设置面板 ================= -->
 <div class="sheet" id="sheet">
@@ -305,8 +325,13 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 1 1 9.2 3.5a6.9 6.9 0 0 0 11.3 11.3z"></path></svg>
           深色
         </button>
+        <button type="button" data-theme-opt="aurora"><span class="sw" style="background:linear-gradient(135deg,#5eead4,#a78bfa)"></span>极光夜</button>
+        <button type="button" data-theme-opt="sakura"><span class="sw" style="background:linear-gradient(135deg,#ffa8c5,#f472b6)"></span>樱花粉</button>
+        <button type="button" data-theme-opt="sunset"><span class="sw" style="background:linear-gradient(135deg,#ffd43b,#ff6b6b)"></span>落日橙</button>
+        <button type="button" data-theme-opt="mint"><span class="sw" style="background:linear-gradient(135deg,#a7f3d0,#10b981)"></span>薄荷绿</button>
+        <button type="button" data-theme-opt="galaxy"><span class="sw" style="background:linear-gradient(135deg,#c4b5fd,#818cf8)"></span>星河紫</button>
       </div>
-      <div class="hint">默认跟随系统。系统在白天/夜间之间切换时，界面会自己跟着变；点一下立刻预览，点保存才记住。</div>
+      <div class="hint">默认跟随系统，白天/夜间切换时界面自己跟着变；后五个是带背景动画的彩色主题。点一下立刻预览，点保存才记住。</div>
     </div>
 
     <div class="field adv-field">

@@ -86,9 +86,16 @@ var Guliqi = (function () {
       { name: '一次旅行', price: 10000 }
     ],
     display: { hide_money: false },
-    theme: 'system',   // 'system' | 'light' | 'dark'
+    theme: 'system',   // 见 THEME_LIST：三个默认值 + 五个彩色主题
     demo: false,
     demo_offset: 0     // 演示时钟相对真实时间的偏移（毫秒），0 = 不偏移
+  };
+
+  // 彩色主题清单：aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 / galaxy 星河紫。
+  // 随返回对象导出，head 防闪脚本和 ui.js 共用这一份，别处不要再抄第二份名单。
+  var THEME_LIST = {
+    system: 1, light: 1, dark: 1,
+    aurora: 1, sakura: 1, sunset: 1, mint: 1, galaxy: 1
   };
 
   /* ---------- 小工具 ---------- */
@@ -220,8 +227,8 @@ var Guliqi = (function () {
     cfg.makeup_workdays = parseDates(cfg.makeup_workdays);
     cfg.items = parseItems(cfg.items);
     cfg.demo = !!cfg.demo;
-    // 主题只认这三个值，脏数据（null / 数字 / 乱写的字符串）一律退回跟随系统
-    cfg.theme = (cfg.theme === 'light' || cfg.theme === 'dark') ? cfg.theme : 'system';
+    // 主题白名单：三个默认值 + 五个彩色主题，脏数据一律退回跟随系统
+    cfg.theme = THEME_LIST[cfg.theme] ? cfg.theme : 'system';
     // 偏移限制在 ±2 天内，防止脏数据把时钟甩到离谱的年份
     cfg.demo_offset = Math.max(-172800000, Math.min(172800000, Math.round(toNum(cfg.demo_offset, 0))));
     if (!cfg.demo) cfg.demo_offset = 0;
@@ -589,6 +596,7 @@ var Guliqi = (function () {
   return {
     DEFAULT_CFG: DEFAULT_CFG,
     STORE_KEY: STORE_KEY,
+    THEME_LIST: THEME_LIST,
     normalize: normalize,
     loadCfg: loadCfg,
     saveCfg: saveCfg,

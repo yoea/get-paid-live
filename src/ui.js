@@ -27,24 +27,39 @@
   var titleTick = 0;
 
   /* ---------- 主题 ----------
-     三种模式：system（跟随系统）/ light / dark。
-     head 里那段内联脚本已经在首帧之前画过一次，这里只负责之后的变化
-     （用户改设置、系统明暗切换时）。 */
+     三种默认模式：system（跟随系统）/ light / dark，外加五个彩色主题
+     （aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 / galaxy 星河紫）。
+     名单以 engine.js 的 G.THEME_LIST 为准。
+     彩色主题 = 底色（深或浅）+ data-accent 挂的配色覆盖：
+       aurora / sunset / galaxy 用深色底，sakura / mint 用浅色底。
+     head 里那段内联脚本已经在首帧之前画过一次，这里只负责之后的变化。 */
   var themeMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   var draftTheme = cfg.theme;      // 面板里点中但还没保存的值
+  // 彩色主题名 → 底色（决定 data-theme 是深是浅，CSS 变量覆盖挂在 data-accent 上）
+  var THEME_BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light' };
+  // 彩色主题的标题栏/任务栏颜色，跟各自 --bg 对应
+  var ACCENT_META = {
+    aurora: '#041018', sunset: '#150a05', galaxy: '#0a0616',
+    sakura: '#fdf4f6', mint: '#f2faf5'
+  };
 
   function sysIsDark() {
     return !!(themeMQ && themeMQ.matches);
   }
 
   function applyTheme(mode) {
-    var m = (mode === 'light' || mode === 'dark') ? mode : 'system';
-    var dark = (m === 'dark') || (m === 'system' && sysIsDark());
+    var m = G.THEME_LIST[mode] ? mode : 'system';
+    var accent = THEME_BASE[m] ? m : '';
+    var dark = accent
+      ? THEME_BASE[m] === 'dark'
+      : (m === 'dark') || (m === 'system' && sysIsDark());
     var root = document.documentElement;
     root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    if (accent) root.setAttribute('data-accent', accent);
+    else root.removeAttribute('data-accent');
     // 手机/独立窗口的标题栏、任务栏跳转列表都读这个
     var meta = document.querySelector('meta[name=theme-color]');
-    if (meta) meta.setAttribute('content', dark ? '#07090d' : '#f5f6f8');
+    if (meta) meta.setAttribute('content', accent ? ACCENT_META[accent] : (dark ? '#07090d' : '#f5f6f8'));
     root.style.colorScheme = dark ? 'dark' : 'light';
     paintThemeBtn(dark);
   }
@@ -1147,6 +1162,28 @@
     $('updateBar').classList.remove('on');
   });
 
+  /* ---------- 手动查更新用的模态框 ----------
+     右下角点版本号检查更新，发现新版直接弹框问「要不要去下载」，
+     不再走顶部那条长提示（长提示留给启动/轮询这种被动发现）。
+     弹框的同时把 updateDismissed 记上，顶部条这次就别再冒出来了。 */
+  function showUpdateModal(info) {
+    updateTag = info.tag;
+    updateUrl = info.url || '';
+    updateDismissed = info.tag;
+    $('updPopTag').textContent = info.tag;
+    $('updPopCur').textContent = 'v' + (info.current || '');
+    $('updatePop').classList.add('open');
+  }
+  function closeUpdateModal() {
+    $('updatePop').classList.remove('open');
+  }
+  $('updPopGo').addEventListener('click', function () {
+    closeUpdateModal();
+    if (updateUrl) desk.send('open_url', updateUrl);
+  });
+  $('updPopLater').addEventListener('click', closeUpdateModal);
+  $('updatePopMask').addEventListener('click', closeUpdateModal);
+
   function pollUpdate() {
     var p = desk.call('poll_update');
     if (!p || typeof p.then !== 'function') return;
@@ -1193,7 +1230,7 @@
             btn.classList.remove('busy');
             btn.textContent = 'v' + (info.current || baseVer.replace(/^v/, ''));
             lastUpdateAt = info.at;
-            if (info.newer) { showUpdate(info); toast('发现新版本 ' + info.tag); }
+            if (info.newer) showUpdateModal(info);   // 发现新版：弹框问要不要去下载
             else toast('已是最新版本 v' + (info.current || ''));
           } else if (tries < 16) {
             setTimeout(wait, 700);
@@ -1350,25 +1387,49 @@
     var W = 0, H = 0;
     var N = 46, ps = [];
 
-    // 两套配色各取一半：深色主题是金/青微光，浅色主题压深成淡金/淡蓝灰
+    // 默认深/浅色的粒子配色（无彩色主题时按 data-theme 二选一）
     var COLORS_DARK = ['255,200,87', '78,205,196', '255,236,170'];
     var COLORS_LIGHT = ['176,132,32', '70,150,146', '120,130,160'];
 
-    function palette() {
-      return document.documentElement.getAttribute('data-theme') === 'light' ? COLORS_LIGHT : COLORS_DARK;
+    /* 彩色主题各有自己的粒子配方：颜色、浓度、漂移速度、上浮/下落方向、颗粒大小。
+       vy 用 [min,max] 区间：负数上浮、正数下落（樱花粉是往下飘的）。 */
+    var FX_PRESETS = {
+      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.20, vy: [-0.12, -0.03], vx: 0.06, r: [1.0, 3.0] },
+      sakura: { colors: ['244,114,182', '251,146,160', '196,181,253'], alpha: 0.30, vy: [0.06, 0.22], vx: 0.18, r: [1.2, 2.8] },
+      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.22, vy: [-0.20, -0.06], vx: 0.10, r: [0.8, 2.4] },
+      mint:   { colors: ['16,185,129', '52,211,153', '153,246,228'], alpha: 0.20, vy: [-0.16, -0.05], vx: 0.08, r: [0.9, 2.4] },
+      galaxy: { colors: ['221,214,254', '165,180,252', '240,171,252'], alpha: 0.16, vy: [-0.02, 0.02], vx: 0.03, r: [0.5, 1.6] }
+    };
+
+    function fxConf() {
+      var a = document.documentElement.getAttribute('data-accent');
+      if (a && FX_PRESETS[a]) return FX_PRESETS[a];
+      var light = document.documentElement.getAttribute('data-theme') === 'light';
+      return {
+        colors: light ? COLORS_LIGHT : COLORS_DARK,
+        alpha: light ? 0.10 : 0.16,
+        vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6]
+      };
     }
-    function baseAlpha() {
-      return document.documentElement.getAttribute('data-theme') === 'light' ? 0.10 : 0.16;
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    // 主题切换后粒子还在按旧配方跑，靠 key 比对发现变了就整批重撒
+    var fxKey = '';
+    function fxSignature() {
+      var root = document.documentElement;
+      return (root.getAttribute('data-accent') || '') + '|' + (root.getAttribute('data-theme') || '');
     }
+
     function spawn(w, h) {
+      var c = fxConf();
       return {
         x: Math.random() * w, y: Math.random() * h,
-        r: 0.7 + Math.random() * 1.9,                                  // 半径（CSS px）
-        vx: (Math.random() - 0.5) * 0.10,                              // 水平漂移
-        vy: -(0.04 + Math.random() * 0.14),                            // 缓慢上浮
+        r: rand(c.r[0], c.r[1]),                                       // 半径（CSS px）
+        vx: (Math.random() - 0.5) * 2 * c.vx,                          // 水平漂移
+        vy: rand(c.vy[0], c.vy[1]),                                    // 上浮或下落
         tw: 0.4 + Math.random() * 0.9,                                 // 闪烁速度
         ph: Math.random() * Math.PI * 2,                               // 闪烁相位
-        c: Math.floor(Math.random() * 3)
+        c: Math.floor(Math.random() * c.colors.length)
       };
     }
     function resize() {
@@ -1389,18 +1450,24 @@
     var running = false, rafId = 0;
     function frame(t) {
       rafId = 0;
-      var pal = palette(), A = baseAlpha();
+      var sig = fxSignature();
+      if (sig !== fxKey) {
+        fxKey = sig;
+        for (var s = 0; s < N; s++) ps[s] = spawn(W, H);
+      }
+      var conf = fxConf();
       ctx.clearRect(0, 0, W, H);
       for (var i = 0; i < N; i++) {
         var p = ps[i];
         p.x += p.vx; p.y += p.vy;
         if (p.y < -6) { p.y = H + 6; p.x = Math.random() * W; }
+        else if (p.y > H + 6) { p.y = -6; p.x = Math.random() * W; }
         if (p.x < -6) p.x = W + 6; else if (p.x > W + 6) p.x = -6;
-        var a = A * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
+        var a = conf.alpha * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
         if (a <= 0.01) continue;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, 6.2832);
-        ctx.fillStyle = 'rgba(' + pal[p.c] + ',' + a.toFixed(3) + ')';
+        ctx.fillStyle = 'rgba(' + conf.colors[p.c] + ',' + a.toFixed(3) + ')';
         ctx.fill();
       }
       if (running && !document.hidden) rafId = requestAnimationFrame(frame);
@@ -1445,10 +1512,10 @@
   document.addEventListener('keydown', function (e) {
     var t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
-      if (e.key === 'Escape') closeSheet();
+      if (e.key === 'Escape') { closeUpdateModal(); closeSheet(); }
       return;
     }
-    if (e.key === 'Escape') closeSheet();
+    if (e.key === 'Escape') { closeUpdateModal(); closeSheet(); }
   });
 
   /* ---------- 启动 ----------

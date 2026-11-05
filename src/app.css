@@ -559,8 +559,8 @@ input[type=number]{-moz-appearance:textfield}
   background:var(--inset);color:var(--faint);font-size:14px;font-family:inherit;cursor:pointer;transition:.15s;
 }
 .wd button.on{background:rgba(74,222,159,.15);border-color:rgba(74,222,159,.38);color:var(--mint-fg);font-weight:650}
-/* 主题三选一：分段控件，比下拉更少点击、也不会开原生菜单盖住面板 */
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border:1px solid var(--line);border-radius:11px;background:var(--inset)}
+/* 主题选择：分段控件（3 个默认 + 5 个彩色主题，4 列两行），比下拉更少点击、也不会开原生菜单盖住面板 */
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;border:1px solid var(--line);border-radius:11px;background:var(--inset)}
 .seg button{
   display:flex;align-items:center;justify-content:center;gap:5px;
   padding:8px 4px;border-radius:8px;border:1px solid transparent;background:none;
@@ -573,6 +573,9 @@ input[type=number]{-moz-appearance:textfield}
 }
 .seg button svg{width:13px;height:13px;flex:0 0 auto}
 .seg button.on svg{color:var(--gold)}
+/* 彩色主题按钮前面的小色卡 */
+.seg .sw{width:13px;height:13px;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.seg button.on .sw{box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),0 0 8px rgba(0,0,0,.2)}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--inset)}
 .switch .t{font-size:13.5px}
 .switch .d{font-size:11px;color:var(--faint);margin-top:3px;line-height:1.5}
@@ -774,6 +777,164 @@ html.lock{overflow:hidden}
 :root[data-theme=light] input[type=checkbox]{accent-color:#0f9a62}
 /* 浅色下白面板压在白灰蒙层上只靠边框分不开，补一层柔光让它浮起来 */
 :root[data-theme=light] .panel{box-shadow:0 24px 70px rgba(16,24,38,.2)}
+
+/* ---------- 彩色主题 ----------
+   五个带背景动画的主题：data-accent 挂在 <html> 上，只覆盖语义变量，
+   组件规则一条不重写。aurora/sunset/galaxy 用深色底，sakura/mint 用浅色底，
+   所以它们天然继承上面对应明暗的全部变量，这里只换强调色和背景。
+   注意：这几块必须放在浅色块后面，浅色底的主题才能盖住浅色的金色调。
+   粒子动画的配方在 ui.js 的 FX_PRESETS 里，跟这里一一对应。 */
+
+/* 极光夜：深夜蓝绿底，青 + 紫极光晕 */
+:root[data-accent=aurora]{
+  --bg:#041018;
+  --gold:#5eead4;
+  --gold-2:#99f6e4;
+  --amber:#7dd3fc;
+  --cyan:#22d3ee;
+  --violet:#c4b5fd;
+  --hero-grad-a:#ccfbf1;
+  --gold-tint:rgba(94,234,212,.07);
+  --gold-tint-2:rgba(94,234,212,.13);
+  --gold-tint-3:rgba(94,234,212,.22);
+  --gold-line:rgba(94,234,212,.3);
+  --gold-line-2:rgba(94,234,212,.42);
+  --mask:rgba(1,10,14,.74);
+}
+:root[data-accent=aurora] body{
+  background:
+    radial-gradient(900px 520px at 14% -12%,rgba(45,212,191,.16),transparent 62%),
+    radial-gradient(780px 460px at 88% -6%,rgba(139,92,246,.15),transparent 58%),
+    radial-gradient(1000px 620px at 50% 112%,rgba(16,185,129,.10),transparent 60%),
+    var(--bg);
+}
+:root[data-accent=aurora] .btn.primary{background:linear-gradient(135deg,#99f6e4,#2dd4bf);color:#03231d}
+
+/* 落日橙：暖棕黑底，橙红火烧云 */
+:root[data-accent=sunset]{
+  --bg:#150a05;
+  --gold:#ffa94d;
+  --gold-2:#ffc078;
+  --amber:#ff8787;
+  --cyan:#fcc419;
+  --violet:#e599f7;
+  --hero-grad-a:#ffe8cc;
+  --gold-tint:rgba(255,169,77,.08);
+  --gold-tint-2:rgba(255,169,77,.14);
+  --gold-tint-3:rgba(255,169,77,.22);
+  --gold-line:rgba(255,169,77,.32);
+  --gold-line-2:rgba(255,169,77,.44);
+  --mask:rgba(16,6,2,.74);
+}
+:root[data-accent=sunset] body{
+  background:
+    radial-gradient(900px 520px at 12% -12%,rgba(249,115,22,.18),transparent 62%),
+    radial-gradient(760px 440px at 90% -6%,rgba(239,68,68,.13),transparent 58%),
+    radial-gradient(900px 560px at 50% 112%,rgba(250,204,21,.09),transparent 60%),
+    var(--bg);
+}
+:root[data-accent=sunset] .btn.primary{background:linear-gradient(135deg,#ffd8a8,#ff922b);color:#341a03}
+
+/* 星河紫：深紫夜空底，星屑慢闪 */
+:root[data-accent=galaxy]{
+  --bg:#0a0616;
+  --gold:#c4b5fd;
+  --gold-2:#ddd6fe;
+  --amber:#f0abfc;
+  --cyan:#a5b4fc;
+  --violet:#818cf8;
+  --hero-grad-a:#ede9fe;
+  --gold-tint:rgba(196,181,253,.08);
+  --gold-tint-2:rgba(196,181,253,.14);
+  --gold-tint-3:rgba(196,181,253,.22);
+  --gold-line:rgba(196,181,253,.32);
+  --gold-line-2:rgba(196,181,253,.44);
+  --mask:rgba(6,3,16,.74);
+}
+:root[data-accent=galaxy] body{
+  background:
+    radial-gradient(900px 520px at 15% -12%,rgba(139,92,246,.17),transparent 62%),
+    radial-gradient(760px 440px at 88% -6%,rgba(59,130,246,.14),transparent 58%),
+    radial-gradient(900px 560px at 50% 112%,rgba(217,70,239,.09),transparent 60%),
+    var(--bg);
+}
+:root[data-accent=galaxy] .btn.primary{background:linear-gradient(135deg,#ddd6fe,#a78bfa);color:#1e103d}
+
+/* 樱花粉：近白粉底，花瓣下落 */
+:root[data-accent=sakura]{
+  --bg:#fdf4f6;
+  --surface:#ffffff;
+  --inset:#f9edf1;
+  --raise:#f4e3e9;
+  --line:#efd7df;
+  --line-soft:#f5e6eb;
+  --line-hover:#dcb6c4;
+  --line-focus:#c493a7;
+  --text:#2b1a21;
+  --dim:#7c5f6b;
+  --faint:#a98d99;
+  --tag:#ab8e9a;
+  --gold:#c2255c;
+  --gold-2:#a61e4d;
+  --amber:#d6336c;
+  --mint:#0ca678;
+  --cyan:#1971c2;
+  --violet:#9c36b5;
+  --hero-grad-a:#a61e4d;
+  --grab:#e8ccd6;
+  --gold-tint:rgba(194,37,92,.08);
+  --gold-tint-2:rgba(194,37,92,.13);
+  --gold-tint-3:rgba(194,37,92,.2);
+  --gold-line:rgba(194,37,92,.3);
+  --gold-line-2:rgba(194,37,92,.42);
+  --mask:rgba(43,26,33,.42);
+}
+:root[data-accent=sakura] body{
+  background:
+    radial-gradient(880px 500px at 10% -14%,rgba(244,114,182,.20),transparent 62%),
+    radial-gradient(720px 420px at 94% -6%,rgba(196,181,253,.16),transparent 58%),
+    var(--bg);
+}
+:root[data-accent=sakura] .hero::before{background:radial-gradient(560px 190px at 0% -10%,rgba(194,37,92,.06),transparent 66%)}
+:root[data-accent=sakura] .btn.primary{background:linear-gradient(135deg,#ffd3e2,#ff8fb3);color:#4a0d24}
+
+/* 薄荷绿：近白绿底，气泡上浮 */
+:root[data-accent=mint]{
+  --bg:#f2faf5;
+  --surface:#ffffff;
+  --inset:#eaf5ef;
+  --raise:#e0efe7;
+  --line:#d6e8de;
+  --line-soft:#e6f2ec;
+  --line-hover:#b3d2c2;
+  --line-focus:#8bb8a1;
+  --text:#15271e;
+  --dim:#4f6b5d;
+  --faint:#7f9a8b;
+  --tag:#7f9a8b;
+  --gold:#0c8a56;
+  --gold-2:#096e45;
+  --amber:#c2620e;
+  --mint:#059669;
+  --cyan:#0e7490;
+  --violet:#6d4bd8;
+  --hero-grad-a:#085d3f;
+  --grab:#cfe4d8;
+  --gold-tint:rgba(12,138,86,.09);
+  --gold-tint-2:rgba(12,138,86,.14);
+  --gold-tint-3:rgba(12,138,86,.2);
+  --gold-line:rgba(12,138,86,.3);
+  --gold-line-2:rgba(12,138,86,.42);
+  --mask:rgba(21,39,30,.4);
+}
+:root[data-accent=mint] body{
+  background:
+    radial-gradient(880px 500px at 10% -14%,rgba(16,185,129,.16),transparent 62%),
+    radial-gradient(720px 420px at 94% -6%,rgba(45,212,191,.12),transparent 58%),
+    var(--bg);
+}
+:root[data-accent=mint] .hero::before{background:radial-gradient(560px 190px at 0% -10%,rgba(12,138,86,.06),transparent 66%)}
+:root[data-accent=mint] .btn.primary{background:linear-gradient(135deg,#a7f3d0,#34d399);color:#03301f}
 
 /* ---------- 大屏模式 ----------
    桌面壳检测到窗口接近铺满主屏（最大化或拖得很大）时给 <html> 加 bigscreen。
