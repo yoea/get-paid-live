@@ -1147,7 +1147,7 @@ html.bigscreen .day i{font-size:10px}
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.12</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.13</button>
     </div>
   </footer>
 </div>
@@ -3033,7 +3033,8 @@ var Lunar = (function () {
     if (!b) return;
     var v = b.getAttribute('data-theme-opt');
     if (!v) return;
-    draftTheme = (v === 'light' || v === 'dark') ? v : 'system';
+    // 名单跟 engine.js 的 THEME_LIST 走；别再写死浅/深两选一，否则彩色主题点了会被吞掉
+    draftTheme = G.THEME_LIST[v] ? v : 'system';
     applyTheme(draftTheme);
     paintThemeSeg();
   });

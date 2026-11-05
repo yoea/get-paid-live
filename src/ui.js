@@ -856,7 +856,8 @@
     if (!b) return;
     var v = b.getAttribute('data-theme-opt');
     if (!v) return;
-    draftTheme = (v === 'light' || v === 'dark') ? v : 'system';
+    // 名单跟 engine.js 的 THEME_LIST 走；别再写死浅/深两选一，否则彩色主题点了会被吞掉
+    draftTheme = G.THEME_LIST[v] ? v : 'system';
     applyTheme(draftTheme);
     paintThemeSeg();
   });

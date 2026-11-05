@@ -22,6 +22,13 @@ import time
 DB_NAME = "data.db"
 SCHEMA_VERSION = 3
 
+# 主题白名单：三个默认值 + 五个彩色主题。必须与 src/engine.js 的 THEME_LIST 同步，
+# 不然界面上能选、保存时却被悄悄改回 system（v1.4.12 踩过这个坑）。
+THEME_VALUES = (
+    "system", "light", "dark",
+    "aurora", "sakura", "sunset", "mint", "galaxy",
+)
+
 _path = None
 
 SCHEMA = """
@@ -278,7 +285,7 @@ def save_cfg(cfg):
                 _set(conn, "cfg.pay_time", _hhmm(raw_pt) if raw_pt else "")
             if "theme" in cfg:
                 theme = cfg.get("theme")
-                _set(conn, "cfg.theme", theme if theme in ("system", "light", "dark") else "system")
+                _set(conn, "cfg.theme", theme if theme in THEME_VALUES else "system")
             if "demo" in cfg:
                 _set(conn, "cfg.demo", "1" if cfg.get("demo") else "0")
             if "demo_offset" in cfg:
