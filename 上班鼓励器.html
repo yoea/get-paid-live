@@ -346,12 +346,7 @@ body{
 .cal-watermark{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;
   font-size:clamp(170px,24vw,260px);font-weight:800;line-height:1;
-  letter-spacing:-.08em;
-  /* 0.8 实心会整块盖住日期数字，所以用同样 0.8 不透明度的镂空描边：
-     轮廓够醒目，字中间是空的，日期和农历小字照样读得清。 */
-  color:transparent;-webkit-text-fill-color:transparent;
-  -webkit-text-stroke:4px var(--text);
-  opacity:.8;
+  letter-spacing:-.08em;color:var(--text);opacity:.08;
   pointer-events:none;user-select:none;
 }
 
@@ -1527,7 +1522,7 @@ html.bigscreen .day i{font-size:10px}
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.20</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.21</button>
     </div>
   </footer>
 </div>
