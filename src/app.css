@@ -334,7 +334,12 @@ body{
 .cal-watermark{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;
   font-size:clamp(170px,24vw,260px);font-weight:800;line-height:1;
-  letter-spacing:-.08em;color:var(--text);opacity:.12;
+  letter-spacing:-.08em;
+  /* 0.8 实心会整块盖住日期数字，所以用同样 0.8 不透明度的镂空描边：
+     轮廓够醒目，字中间是空的，日期和农历小字照样读得清。 */
+  color:transparent;-webkit-text-fill-color:transparent;
+  -webkit-text-stroke:4px var(--text);
+  opacity:.8;
   pointer-events:none;user-select:none;
 }
 
