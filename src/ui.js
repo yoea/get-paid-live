@@ -1285,7 +1285,7 @@
     if (!el) return;
     el.textContent = $('fCloseExit').checked
       ? '点叉号会直接退出程序，计时随之结束。'
-      : '点叉号不会退出，程序缩到右下角托盘继续计时；点托盘图标回到界面。';
+      : '点叉号不退出，缩到托盘继续计时；点托盘图标回来。';
   }
 
   function applyDeskOpts(opts) {
