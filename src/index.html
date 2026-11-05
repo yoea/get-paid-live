@@ -14,7 +14,7 @@
    所以这里直接读 localStorage 的原始值，不经过 Guliqi.normalize（那时引擎还没加载）。
    彩色主题名单跟 engine.js 的 THEME_LIST 保持一致（这边要赶在引擎加载前用，只能各放一份）。 */
 (function () {
-  var BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light' };
+  var BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light', ocean: 'dark', ink: 'light', neon: 'dark' };
   var mode = 'system';
   try {
     var s = localStorage.getItem('guliqi.cfg.v1');
@@ -35,6 +35,64 @@
 </script>
 </head>
 <body>
+<!-- 主题场景层：SVG 山峦 / 波浪 / 极光 / 星座 / 山水墨、3D 网格、落日光晕等。
+     全部固定铺满视口、不吃鼠标，按 <html data-accent> 决定显示哪一组。 -->
+<div class="fx" id="themeFx" aria-hidden="true">
+  <svg class="fx-svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <linearGradient id="fxAur1" x1="0" y1="0" x2="1" y2=".4">
+        <stop offset="0" stop-color="#2dd4bf" stop-opacity="0"></stop>
+        <stop offset=".42" stop-color="#5eead4" stop-opacity=".9"></stop>
+        <stop offset="1" stop-color="#a78bfa" stop-opacity="0"></stop>
+      </linearGradient>
+      <linearGradient id="fxAur2" x1="0" y1="0" x2="1" y2=".4">
+        <stop offset="0" stop-color="#7c3aed" stop-opacity="0"></stop>
+        <stop offset=".5" stop-color="#a78bfa" stop-opacity=".8"></stop>
+        <stop offset="1" stop-color="#22d3ee" stop-opacity="0"></stop>
+      </linearGradient>
+      <linearGradient id="fxWave1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff" stop-opacity=".24"></stop>
+        <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
+      </linearGradient>
+      <filter id="fxSoft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="38"></feGaussianBlur></filter>
+      <filter id="fxSoft2" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12"></feGaussianBlur></filter>
+    </defs>
+    <g class="fx-aurora">
+      <path d="M-120 250 C 220 40 540 390 840 170 S 1300 50 1560 230 L1560 400 C 1280 240 1040 510 760 330 S 200 290 -120 450 Z" fill="url(#fxAur1)" filter="url(#fxSoft)" opacity=".62"></path>
+      <path d="M-120 370 C 240 190 580 510 920 290 S 1320 210 1560 370 L1560 510 C 1300 350 1020 630 700 430 S 190 410 -120 550 Z" fill="url(#fxAur2)" filter="url(#fxSoft)" opacity=".48"></path>
+      <path d="M-120 140 C 300 20 620 260 980 110 S 1340 10 1560 130 L1560 210 C 1300 100 1060 300 760 200 S 240 150 -120 250 Z" fill="url(#fxAur1)" filter="url(#fxSoft)" opacity=".3"></path>
+    </g>
+    <g class="fx-hills">
+      <path d="M0 690 L160 570 L300 645 L500 505 L690 660 L880 555 L1090 675 L1270 545 L1440 645 L1440 900 L0 900 Z"></path>
+      <path d="M0 770 L190 690 L360 755 L560 655 L760 775 L980 680 L1180 770 L1440 690 L1440 900 L0 900 Z"></path>
+    </g>
+    <g class="fx-waves">
+      <path d="M0 710 C 240 650 480 775 720 715 S 1200 655 1440 715 L1440 900 L0 900 Z"></path>
+      <path d="M0 780 C 260 730 500 845 760 785 S 1220 730 1440 785 L1440 900 L0 900 Z"></path>
+    </g>
+    <g class="fx-const">
+      <path d="M170 170 L285 255 L430 195 L545 320 L715 235 L860 300 L1010 205"></path>
+      <path d="M285 255 L360 380 L545 320"></path>
+      <path d="M1040 520 L1160 445 L1290 505 L1360 400"></path>
+      <circle cx="170" cy="170" r="4"></circle><circle cx="285" cy="255" r="3"></circle>
+      <circle cx="430" cy="195" r="4"></circle><circle cx="545" cy="320" r="3"></circle>
+      <circle cx="715" cy="235" r="4"></circle><circle cx="860" cy="300" r="3"></circle>
+      <circle cx="1010" cy="205" r="4"></circle><circle cx="1160" cy="445" r="3"></circle>
+      <circle cx="1290" cy="505" r="4"></circle><circle cx="1360" cy="400" r="3"></circle>
+    </g>
+    <g class="fx-ink">
+      <circle cx="1170" cy="190" r="82" fill="#b7412f" opacity=".12" filter="url(#fxSoft2)"></circle>
+      <path d="M0 660 C 180 585 260 630 380 545 C 470 480 540 555 630 610 C 760 690 860 585 1010 620 C 1160 655 1280 590 1440 645 L1440 900 L0 900 Z" fill="#1e2321" opacity=".075" filter="url(#fxSoft2)"></path>
+      <path d="M0 760 C 220 700 400 805 620 735 C 850 665 1020 790 1240 730 C 1320 705 1380 715 1440 740 L1440 900 L0 900 Z" fill="#1e2321" opacity=".1" filter="url(#fxSoft)"></path>
+    </g>
+  </svg>
+  <div class="fx-sun"></div>
+  <div class="fx-ring"></div>
+  <div class="fx-grid"></div>
+  <div class="fx-beams"></div>
+  <div class="fx-glow ga"></div><div class="fx-glow gb"></div><div class="fx-glow gc"></div>
+  <div class="fx-grain"></div><div class="fx-scan"></div>
+</div>
 <canvas id="bgFx" aria-hidden="true"></canvas>
 <div class="app">
 
@@ -177,7 +235,7 @@
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.14</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.15</button>
     </div>
   </footer>
 </div>
@@ -306,25 +364,19 @@
     <div class="field adv-field">
       <label>界面主题</label>
       <div class="seg" id="fTheme" role="group" aria-label="界面主题">
-        <button type="button" data-theme-opt="system">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2"></rect><path d="M8.5 20.5h7M12 16.5v4"></path></svg>
-          跟随系统
-        </button>
-        <button type="button" data-theme-opt="light">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"></path></svg>
-          浅色
-        </button>
-        <button type="button" data-theme-opt="dark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 1 1 9.2 3.5a6.9 6.9 0 0 0 11.3 11.3z"></path></svg>
-          深色
-        </button>
-        <button type="button" data-theme-opt="aurora"><span class="sw" style="background:linear-gradient(135deg,#5eead4,#a78bfa)"></span>极光夜</button>
-        <button type="button" data-theme-opt="sakura"><span class="sw" style="background:linear-gradient(135deg,#ffa8c5,#f472b6)"></span>樱花粉</button>
-        <button type="button" data-theme-opt="sunset"><span class="sw" style="background:linear-gradient(135deg,#ffd43b,#ff6b6b)"></span>落日橙</button>
-        <button type="button" data-theme-opt="mint"><span class="sw" style="background:linear-gradient(135deg,#a7f3d0,#10b981)"></span>薄荷绿</button>
-        <button type="button" data-theme-opt="galaxy"><span class="sw" style="background:linear-gradient(135deg,#c4b5fd,#818cf8)"></span>星河紫</button>
+        <button type="button" data-theme-opt="system"><i class="sw" style="background:linear-gradient(100deg,#202632 0 50%,#eef1f5 50% 100%)"></i><span>跟随系统</span></button>
+        <button type="button" data-theme-opt="light"><i class="sw" style="background:linear-gradient(135deg,#ffffff,#f0f3f7 60%,#ffd27a)"></i><span>浅色</span></button>
+        <button type="button" data-theme-opt="dark"><i class="sw" style="background:linear-gradient(135deg,#0d1219,#1c2532 60%,#ffc857)"></i><span>深色</span></button>
+        <button type="button" data-theme-opt="aurora"><i class="sw" style="background:linear-gradient(115deg,#041b22,#2dd4bf 45%,#a78bfa 78%,#0a1030)"></i><span>极光夜</span></button>
+        <button type="button" data-theme-opt="sakura"><i class="sw" style="background:linear-gradient(115deg,#fdf4f6,#ffb3c9 48%,#f472b6 80%,#c8507f)"></i><span>樱花粉</span></button>
+        <button type="button" data-theme-opt="sunset"><i class="sw" style="background:linear-gradient(115deg,#2a1005,#ff922b 48%,#ff6b6b 78%,#4a1608)"></i><span>落日橙</span></button>
+        <button type="button" data-theme-opt="mint"><i class="sw" style="background:linear-gradient(115deg,#f2faf5,#a7f3d0 45%,#10b981 85%)"></i><span>薄荷绿</span></button>
+        <button type="button" data-theme-opt="galaxy"><i class="sw" style="background:linear-gradient(115deg,#0a0616,#7c3aed 45%,#f0abfc 82%,#1a1040)"></i><span>星河紫</span></button>
+        <button type="button" data-theme-opt="ocean"><i class="sw" style="background:linear-gradient(115deg,#03121f,#0e7490 45%,#22d3ee 82%,#04263a)"></i><span>深海蓝</span></button>
+        <button type="button" data-theme-opt="ink"><i class="sw" style="background:linear-gradient(115deg,#f7f4ec,#d9d2c2 45%,#3b403c 80%,#b7412f)"></i><span>水墨</span></button>
+        <button type="button" data-theme-opt="neon"><i class="sw" style="background:linear-gradient(115deg,#0b0618,#ff3ea5 45%,#22d3ee 82%,#160a2e)"></i><span>霓虹夜</span></button>
       </div>
-      <div class="hint">默认跟随系统，白天/夜间切换时界面自己跟着变；后五个是带背景动画的彩色主题。点一下立刻预览，点保存才记住。</div>
+      <div class="hint">每套主题都有独立配色、边框和背景动效。点一下立刻预览，点保存才记住；右上角快捷按钮仍只切深浅。</div>
     </div>
 
     <div class="field adv-field">

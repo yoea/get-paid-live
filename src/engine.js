@@ -91,11 +91,12 @@ var Guliqi = (function () {
     demo_offset: 0     // 演示时钟相对真实时间的偏移（毫秒），0 = 不偏移
   };
 
-  // 彩色主题清单：aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 / galaxy 星河紫。
-  // 随返回对象导出，head 防闪脚本和 ui.js 共用这一份，别处不要再抄第二份名单。
+  // 彩色主题清单（8 套）：极光夜 / 樱花粉 / 落日橙 / 薄荷绿 / 星河紫 / 深海蓝 / 水墨 / 霓虹夜。
+  // 随返回对象导出，head 防闪脚本、ui.js、store.py 的名单都要与这里同步。
   var THEME_LIST = {
     system: 1, light: 1, dark: 1,
-    aurora: 1, sakura: 1, sunset: 1, mint: 1, galaxy: 1
+    aurora: 1, sakura: 1, sunset: 1, mint: 1, galaxy: 1,
+    ocean: 1, ink: 1, neon: 1
   };
 
   /* ---------- 小工具 ---------- */

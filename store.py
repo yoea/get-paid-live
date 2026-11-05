@@ -22,11 +22,12 @@ import time
 DB_NAME = "data.db"
 SCHEMA_VERSION = 3
 
-# 主题白名单：三个默认值 + 五个彩色主题。必须与 src/engine.js 的 THEME_LIST 同步，
+# 主题白名单：三个默认值 + 八套彩色主题。必须与 src/engine.js 的 THEME_LIST 同步，
 # 不然界面上能选、保存时却被悄悄改回 system（v1.4.12 踩过这个坑）。
 THEME_VALUES = (
     "system", "light", "dark",
     "aurora", "sakura", "sunset", "mint", "galaxy",
+    "ocean", "ink", "neon",
 )
 
 _path = None

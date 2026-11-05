@@ -27,20 +27,24 @@
   var titleTick = 0;
 
   /* ---------- 主题 ----------
-     三种默认模式：system（跟随系统）/ light / dark，外加五个彩色主题
-     （aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 / galaxy 星河紫）。
+     三个默认模式：system（跟随系统）/ light / dark，外加八套彩色主题：
+     aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 /
+     galaxy 星河紫 / ocean 深海蓝 / ink 水墨 / neon 霓虹夜。
      名单以 engine.js 的 G.THEME_LIST 为准。
-     彩色主题 = 底色（深或浅）+ data-accent 挂的配色覆盖：
-       aurora / sunset / galaxy 用深色底，sakura / mint 用浅色底。
+     彩色主题 = 底色（深或浅）+ data-accent 挂的配色、卡片质感与背景场景层。
      head 里那段内联脚本已经在首帧之前画过一次，这里只负责之后的变化。 */
   var themeMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   var draftTheme = cfg.theme;      // 面板里点中但还没保存的值
   // 彩色主题名 → 底色（决定 data-theme 是深是浅，CSS 变量覆盖挂在 data-accent 上）
-  var THEME_BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light' };
+  var THEME_BASE = {
+    aurora: 'dark', sunset: 'dark', galaxy: 'dark', ocean: 'dark', neon: 'dark',
+    sakura: 'light', mint: 'light', ink: 'light'
+  };
   // 彩色主题的标题栏/任务栏颜色，跟各自 --bg 对应
   var ACCENT_META = {
-    aurora: '#041018', sunset: '#150a05', galaxy: '#0a0616',
-    sakura: '#fdf4f6', mint: '#f2faf5'
+    aurora: '#04121a', sunset: '#1a0a06', galaxy: '#080515',
+    sakura: '#fff5f7', mint: '#eefaf4',
+    ocean: '#03121f', ink: '#f7f4ec', neon: '#090317'
   };
 
   function sysIsDark() {
@@ -1368,14 +1372,18 @@
     var COLORS_DARK = ['255,200,87', '78,205,196', '255,236,170'];
     var COLORS_LIGHT = ['176,132,32', '70,150,146', '120,130,160'];
 
-    /* 彩色主题各有自己的粒子配方：颜色、浓度、漂移速度、上浮/下落方向、颗粒大小。
-       vy 用 [min,max] 区间：负数上浮、正数下落（樱花粉是往下飘的）。 */
+    /* 八套彩色主题各有粒子配方：颜色、浓度、漂移方向、大小，还有形状。
+       vy 区间：负数上浮、正数下落（樱花瓣往下飘）。
+       shape：dot 圆点 / petal 旋转花瓣 / bubble 空心气泡 / star 四角星芒 / spark 竖直火星。 */
     var FX_PRESETS = {
-      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.20, vy: [-0.12, -0.03], vx: 0.06, r: [1.0, 3.0] },
-      sakura: { colors: ['244,114,182', '251,146,160', '196,181,253'], alpha: 0.30, vy: [0.06, 0.22], vx: 0.18, r: [1.2, 2.8] },
-      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.22, vy: [-0.20, -0.06], vx: 0.10, r: [0.8, 2.4] },
-      mint:   { colors: ['16,185,129', '52,211,153', '153,246,228'], alpha: 0.20, vy: [-0.16, -0.05], vx: 0.08, r: [0.9, 2.4] },
-      galaxy: { colors: ['221,214,254', '165,180,252', '240,171,252'], alpha: 0.16, vy: [-0.02, 0.02], vx: 0.03, r: [0.5, 1.6] }
+      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.14, vy: [-0.10, -0.03], vx: 0.05, r: [1.0, 2.6], shape: 'dot' },
+      sakura: { colors: ['244,114,182', '251,146,160', '255,190,212'], alpha: 0.34, vy: [0.06, 0.20], vx: 0.16, r: [1.6, 3.2], shape: 'petal' },
+      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.18, vy: [-0.18, -0.05], vx: 0.09, r: [0.9, 2.2], shape: 'spark' },
+      mint:   { colors: ['16,185,129', '52,211,153', '255,255,255'], alpha: 0.18, vy: [-0.16, -0.05], vx: 0.08, r: [1.2, 3.0], shape: 'bubble' },
+      galaxy: { colors: ['221,214,254', '165,180,252', '240,171,252'], alpha: 0.16, vy: [-0.02, 0.02], vx: 0.03, r: [0.7, 1.8], shape: 'star' },
+      ocean:  { colors: ['165,243,252', '34,211,238', '103,232,249'], alpha: 0.17, vy: [-0.14, -0.04], vx: 0.06, r: [1.2, 3.0], shape: 'bubble' },
+      ink:    { colors: ['60,66,61', '120,124,116', '183,65,47'], alpha: 0.10, vy: [-0.03, 0.01], vx: 0.02, r: [0.6, 2.0], shape: 'dot' },
+      neon:   { colors: ['255,92,184', '34,211,238', '168,85,247'], alpha: 0.16, vy: [-0.06, 0.02], vx: 0.04, r: [0.7, 1.9], shape: 'star' }
     };
 
     function fxConf() {
@@ -1385,7 +1393,7 @@
       return {
         colors: light ? COLORS_LIGHT : COLORS_DARK,
         alpha: light ? 0.10 : 0.16,
-        vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6]
+        vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6], shape: 'dot'
       };
     }
     function rand(a, b) { return a + Math.random() * (b - a); }
@@ -1406,8 +1414,40 @@
         vy: rand(c.vy[0], c.vy[1]),                                    // 上浮或下落
         tw: 0.4 + Math.random() * 0.9,                                 // 闪烁速度
         ph: Math.random() * Math.PI * 2,                               // 闪烁相位
+        rot: Math.random() * Math.PI * 2,                              // 花瓣/星芒朝向
+        rotV: (Math.random() - 0.5) * 0.012,                           // 自转速度
         c: Math.floor(Math.random() * c.colors.length)
       };
+    }
+
+    // 一个粒子按 shape 画成不同形状；只用到最基础的 Canvas API，46 个粒子每帧很轻
+    function drawParticle(p, rgb, a, shape) {
+      var fill = 'rgba(' + rgb + ',' + a.toFixed(3) + ')';
+      ctx.strokeStyle = fill;
+      ctx.fillStyle = fill;
+      if (shape === 'petal') {
+        ctx.save();
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.beginPath(); ctx.ellipse(0, 0, p.r * 1.7, p.r * 0.68, 0, 0, 6.2832);
+        ctx.fill(); ctx.restore();
+      } else if (shape === 'spark') {
+        ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 0.6, p.r * 1.9, 0, 0, 6.2832); ctx.fill();
+      } else if (shape === 'bubble') {
+        ctx.lineWidth = 0.9;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 1.5, 0, 6.2832); ctx.stroke();
+        ctx.fillStyle = 'rgba(' + rgb + ',' + (a * 0.22).toFixed(3) + ')';
+        ctx.fill();
+      } else if (shape === 'star') {
+        var R = p.r * 2.3;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(p.x - R, p.y); ctx.lineTo(p.x + R, p.y);
+        ctx.moveTo(p.x, p.y - R); ctx.lineTo(p.x, p.y + R);
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.55, 0, 6.2832); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
     }
     function resize() {
       /* clientWidth/Height 才是"看得见的那块"，innerWidth 含滚动条宽度：
@@ -1436,16 +1476,13 @@
       ctx.clearRect(0, 0, W, H);
       for (var i = 0; i < N; i++) {
         var p = ps[i];
-        p.x += p.vx; p.y += p.vy;
+        p.x += p.vx; p.y += p.vy; p.rot += p.rotV;
         if (p.y < -6) { p.y = H + 6; p.x = Math.random() * W; }
         else if (p.y > H + 6) { p.y = -6; p.x = Math.random() * W; }
         if (p.x < -6) p.x = W + 6; else if (p.x > W + 6) p.x = -6;
         var a = conf.alpha * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
         if (a <= 0.01) continue;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, 6.2832);
-        ctx.fillStyle = 'rgba(' + conf.colors[p.c] + ',' + a.toFixed(3) + ')';
-        ctx.fill();
+        drawParticle(p, conf.colors[p.c], a, conf.shape);
       }
       if (running && !document.hidden) rafId = requestAnimationFrame(frame);
     }

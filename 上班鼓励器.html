@@ -61,6 +61,15 @@
   --gold-line-2:rgba(255,200,87,.4);
   --mask:rgba(3,5,9,.72);
   --radius:18px;
+  /* 卡片外观再抽一层：彩色主题只改这几个变量就能换边框、圆角、玻璃质感和发光 */
+  --card-line:var(--line);
+  --card-radius:var(--radius);
+  --card-shadow:none;
+  --card-bg-a:var(--panel-a);
+  --card-bg-b:var(--panel-b);
+  --hero-glow:rgba(255,200,87,.11);
+  /* 主题场景层的三团柔光颜色，默认不显示；彩色主题各自覆盖 */
+  --fx1:transparent;--fx2:transparent;--fx3:transparent;
 }
 
 
@@ -152,9 +161,10 @@ body{
 /* ---------- 卡片 ---------- */
 .card{
   position:relative;
-  background:linear-gradient(180deg,var(--panel-a),var(--panel-b));
-  border:1px solid var(--line);
-  border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--card-bg-a),var(--card-bg-b));
+  border:1px solid var(--card-line);
+  border-radius:var(--card-radius);
+  box-shadow:var(--card-shadow);
   padding:17px 17px 18px;
   min-width:0;
 }
@@ -163,7 +173,7 @@ body{
 .hero{overflow:hidden;padding:19px 17px 20px}
 .hero::before{
   content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  background:radial-gradient(560px 190px at 0% -10%,rgba(255,200,87,.11),transparent 66%);
+  background:radial-gradient(560px 190px at 0% -10%,var(--hero-glow),transparent 66%);
 }
 .hero>*{position:relative}
 .hero-top{
@@ -262,8 +272,10 @@ body{
 /* ---------- 统计 ---------- */
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .stat{
-  background:linear-gradient(180deg,var(--panel-a),var(--panel-b));
-  border:1px solid var(--line);border-radius:14px;padding:11px 12px;min-width:0;
+  background:linear-gradient(180deg,var(--card-bg-a),var(--card-bg-b));
+  border:1px solid var(--card-line);border-radius:var(--card-radius);
+  box-shadow:var(--card-shadow);
+  padding:11px 12px;min-width:0;
 }
 .stat .k{font-size:11px;color:var(--dim);letter-spacing:.04em;display:flex;align-items:center;gap:5px;white-space:nowrap}
 .stat .k i{width:5px;height:5px;border-radius:50%;flex:0 0 auto}
@@ -741,6 +753,7 @@ html.lock{overflow:hidden}
   --gold-line:rgba(169,106,9,.3);
   --gold-line-2:rgba(169,106,9,.42);
   --mask:rgba(18,24,34,.4);
+  --hero-glow:rgba(169,106,9,.07);
 }
 /* 浅色下这几处不是"深色值不适用"，而是原来的色相在白底上直接失读 */
 :root[data-theme=light] body{
@@ -748,9 +761,6 @@ html.lock{overflow:hidden}
     radial-gradient(880px 500px at 10% -14%,rgba(255,186,60,.2),transparent 62%),
     radial-gradient(720px 420px at 94% -6%,rgba(60,190,170,.11),transparent 58%),
     var(--bg);
-}
-:root[data-theme=light] .hero::before{
-  background:radial-gradient(560px 190px at 0% -10%,rgba(169,106,9,.07),transparent 66%);
 }
 :root[data-theme=light] .badge[data-s=idle]{color:#5b3fd0;background:rgba(124,92,246,.1);border-color:rgba(124,92,246,.26)}
 :root[data-theme=light] .err{color:#c0392b}
@@ -764,163 +774,257 @@ html.lock{overflow:hidden}
 /* 浅色下白面板压在白灰蒙层上只靠边框分不开，补一层柔光让它浮起来 */
 :root[data-theme=light] .panel{box-shadow:0 24px 70px rgba(16,24,38,.2)}
 
-/* ---------- 彩色主题 ----------
-   五个带背景动画的主题：data-accent 挂在 <html> 上，只覆盖语义变量，
-   组件规则一条不重写。aurora/sunset/galaxy 用深色底，sakura/mint 用浅色底，
-   所以它们天然继承上面对应明暗的全部变量，这里只换强调色和背景。
-   注意：这几块必须放在浅色块后面，浅色底的主题才能盖住浅色的金色调。
-   粒子动画的配方在 ui.js 的 FX_PRESETS 里，跟这里一一对应。 */
+/* ---------- 主题场景层 ----------
+   #themeFx 固定铺满视口，默认整套隐藏（默认深/浅主题零开销）。
+   彩色主题按 data-accent 点亮对应的一组：SVG 极光/山峦/波浪/星座/水墨、
+   3D 透视网格、水下光束、落日圆盘、星环、纸纹与扫描线。
+   只动 transform / opacity / background-position，动画交给 GPU。 */
+.fx{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.fx-svg{position:absolute;inset:0;width:100%;height:100%;z-index:2}
+.fx-svg g{display:none}
+.fx>div{position:absolute;display:none}
+.fx-glow{z-index:0;border-radius:50%;filter:blur(64px);opacity:var(--fx-op,.55);will-change:transform}
+:root[data-accent] .fx-glow.ga{display:block;width:76vw;height:64vh;left:-20vw;top:-26vh;background:radial-gradient(circle,var(--fx1) 0%,transparent 68%);animation:fxFloatA 24s ease-in-out infinite alternate}
+:root[data-accent] .fx-glow.gb{display:block;width:68vw;height:58vh;right:-18vw;top:-12vh;background:radial-gradient(circle,var(--fx2) 0%,transparent 68%);animation:fxFloatB 29s ease-in-out infinite alternate}
+:root[data-accent] .fx-glow.gc{display:block;width:90vw;height:60vh;left:8vw;bottom:-38vh;background:radial-gradient(circle,var(--fx3) 0%,transparent 68%);animation:fxFloatC 33s ease-in-out infinite alternate}
+.fx-sun{z-index:1;width:min(46vw,430px);height:min(46vw,430px);left:50%;top:58%;border-radius:50%;background:var(--fx-sun-bg);box-shadow:var(--fx-sun-glow);animation:fxSunBreathe 13s ease-in-out infinite alternate}
+.fx-hills path:nth-child(1){fill:var(--fx-hill-a,#3b1408)}
+.fx-hills path:nth-child(2){fill:var(--fx-hill-b,#1d0904)}
+.fx-waves path:nth-child(1){fill:var(--fx-wave-a,rgba(255,255,255,.4))}
+.fx-waves path:nth-child(2){fill:var(--fx-wave-b,rgba(255,255,255,.2))}
+.fx-const path{fill:none;stroke:var(--fx-star-line,rgba(196,181,253,.22));stroke-width:1.2}
+.fx-const circle{fill:var(--fx-star,#e9d5ff)}
+.fx-ring{z-index:1;width:min(82vw,920px);height:min(82vw,920px);left:50%;top:44%;border-radius:50%;border:1px solid var(--fx-ring-line,rgba(196,181,253,.22));box-shadow:0 0 70px var(--fx-ring-glow,rgba(139,92,246,.18)),inset 0 0 70px var(--fx-ring-glow,rgba(139,92,246,.18));animation:fxRingSpin 70s linear infinite}
+.fx-grid{z-index:1;left:-60%;right:-60%;bottom:-55%;height:125%;opacity:.6;
+  background-image:linear-gradient(var(--fx-grid,rgba(255,62,165,.34)) 1px,transparent 1px),linear-gradient(90deg,var(--fx-grid2,rgba(34,211,238,.3)) 1px,transparent 1px);
+  background-size:58px 58px;transform:perspective(380px) rotateX(70deg);transform-origin:50% 0;
+  -webkit-mask-image:linear-gradient(to bottom,transparent,#000 34%,#000);
+  mask-image:linear-gradient(to bottom,transparent,#000 34%,#000);animation:fxGrid 7s linear infinite}
+.fx-beams{z-index:0;inset:-25%;filter:blur(18px);
+  background:repeating-linear-gradient(102deg,transparent 0 70px,var(--fx-beam,rgba(165,243,252,.09)) 70px 92px,transparent 92px 170px);
+  animation:fxBeams 18s ease-in-out infinite alternate}
+.fx-grain{z-index:5;inset:0;opacity:var(--fx-grain,.05);mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.fx-scan{z-index:5;inset:0;opacity:.55;background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 4px)}
+:root[data-accent] .fx-grain{display:block}
+@keyframes fxFloatA{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(7vw,6vh,0) scale(1.14)}}
+@keyframes fxFloatB{from{transform:translate3d(0,0,0) scale(1.08)}to{transform:translate3d(-8vw,9vh,0) scale(.94)}}
+@keyframes fxFloatC{from{transform:translate3d(-5vw,0,0) scale(1)}to{transform:translate3d(6vw,-7vh,0) scale(1.12)}}
+@keyframes fxAuroraDrift{from{transform:translate(-4%,1%) skewX(-3deg)}to{transform:translate(4%,-3%) skewX(4deg)}}
+@keyframes fxWaveDrift{from{transform:translateX(-3%)}to{transform:translateX(3%)}}
+@keyframes fxSunBreathe{from{opacity:.84;transform:translate(-50%,-50%) scale(.97)}to{opacity:1;transform:translate(-50%,-50%) scale(1.03)}}
+@keyframes fxRingSpin{from{transform:translate(-50%,-50%) rotateX(72deg) rotateZ(0)}to{transform:translate(-50%,-50%) rotateX(72deg) rotateZ(360deg)}}
+@keyframes fxGrid{from{background-position:0 0}to{background-position:0 58px}}
+@keyframes fxBeams{from{transform:translateX(-46px) skewX(-4deg)}to{transform:translateX(46px) skewX(4deg)}}
+@media(prefers-reduced-motion:reduce){.fx *{animation:none!important}}
 
-/* 极光夜：深夜蓝绿底，青 + 紫极光晕 */
+/* ---------- 主题预览卡（设置 → 外观） ---------- */
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:5px;border:1px solid var(--line);border-radius:13px;background:var(--inset)}
+.seg button{display:flex;flex-direction:column;align-items:stretch;gap:5px;padding:6px 6px 7px;border-radius:9px;border:1px solid transparent;background:none;color:var(--dim);font-size:11.5px;font-family:inherit;cursor:pointer;transition:.16s;text-align:center;white-space:nowrap}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--w2);border-color:var(--gold-line-2);color:var(--text);font-weight:650;box-shadow:0 2px 10px rgba(0,0,0,.16)}
+.seg .sw{display:block;width:100%;height:21px;border-radius:6px;box-shadow:inset 0 0 0 1px rgba(128,128,128,.18)}
+.seg button.on .sw{box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),0 2px 9px rgba(0,0,0,.2)}
+
+/* ---------- 彩色主题 ----------
+   八套主题 = 一组语义变量（配色/边框/圆角/阴影）+ 一组场景开关。
+   卡片、统计块、主卡高光都走 --card-* / --hero-glow，组件规则不重复写。
+   粒子配方在 ui.js 的 FX_PRESETS 里，与这里一一对应。 */
+
+/* 极光夜：流动极光带 + 冷青玻璃卡片 */
 :root[data-accent=aurora]{
-  --bg:#041018;
-  --gold:#5eead4;
-  --gold-2:#99f6e4;
-  --amber:#7dd3fc;
-  --cyan:#22d3ee;
-  --violet:#c4b5fd;
-  --hero-grad-a:#ccfbf1;
-  --gold-tint:rgba(94,234,212,.07);
-  --gold-tint-2:rgba(94,234,212,.13);
-  --gold-tint-3:rgba(94,234,212,.22);
-  --gold-line:rgba(94,234,212,.3);
-  --gold-line-2:rgba(94,234,212,.42);
-  --mask:rgba(1,10,14,.74);
+  --bg:#04121a;--surface:#071c26;--inset:#04141c;--raise:#0a2530;
+  --text:#e4fbf7;--dim:#83a9ae;--faint:#5b8188;--tag:#6b949a;
+  --gold:#5eead4;--gold-2:#a7f3d0;--amber:#7dd3fc;--cyan:#22d3ee;--violet:#c4b5fd;--mint:#34d399;
+  --hero-grad-a:#d8fff5;--mask:rgba(1,10,14,.74);--hero-glow:rgba(94,234,212,.12);
+  --gold-tint:rgba(94,234,212,.08);--gold-tint-2:rgba(94,234,212,.14);--gold-tint-3:rgba(94,234,212,.22);
+  --gold-line:rgba(94,234,212,.3);--gold-line-2:rgba(94,234,212,.45);
+  --line:rgba(94,234,212,.16);--line-soft:rgba(94,234,212,.1);--line-hover:rgba(94,234,212,.32);
+  --card-line:rgba(94,234,212,.24);--card-radius:20px;
+  --card-bg-a:rgba(9,34,42,.72);--card-bg-b:rgba(5,19,27,.6);
+  --card-shadow:0 12px 40px rgba(0,0,0,.32),inset 0 1px 0 rgba(160,255,235,.07);
+  --fx1:rgba(45,212,191,.38);--fx2:rgba(139,92,246,.3);--fx3:rgba(16,185,129,.24);--fx-op:.6;--fx-grain:.045;
 }
-:root[data-accent=aurora] body{
-  background:
-    radial-gradient(900px 520px at 14% -12%,rgba(45,212,191,.16),transparent 62%),
-    radial-gradient(780px 460px at 88% -6%,rgba(139,92,246,.15),transparent 58%),
-    radial-gradient(1000px 620px at 50% 112%,rgba(16,185,129,.10),transparent 60%),
-    var(--bg);
-}
+:root[data-accent=aurora] body{background:radial-gradient(900px 520px at 12% -12%,rgba(45,212,191,.1),transparent 62%),var(--bg)}
+:root[data-accent=aurora] .card,:root[data-accent=aurora] .stat{backdrop-filter:blur(10px)}
+:root[data-accent=aurora] .fx-aurora{display:block;animation:fxAuroraDrift 17s ease-in-out infinite alternate}
 :root[data-accent=aurora] .btn.primary{background:linear-gradient(135deg,#99f6e4,#2dd4bf);color:#03231d}
 
-/* 落日橙：暖棕黑底，橙红火烧云 */
+/* 樱花粉：花瓣飘落 + 和纸颗粒 + 柔粉圆月 */
+:root[data-accent=sakura]{
+  --bg:#fff5f7;--surface:#fffafb;--inset:#fbe9ee;--raise:#f8dfe7;
+  --line:#f0d3dd;--line-soft:#f7e4ea;--line-hover:#ddaec2;--line-focus:#c487a3;
+  --text:#3a2029;--dim:#8a6470;--faint:#b08c99;--tag:#b08c99;
+  --gold:#c2255c;--gold-2:#a61e4d;--amber:#e0577f;--mint:#0ca678;--cyan:#1971c2;--violet:#9c36b5;
+  --hero-grad-a:#b32457;--mask:rgba(58,32,41,.42);--hero-glow:rgba(244,114,182,.1);
+  --gold-tint:rgba(194,37,92,.08);--gold-tint-2:rgba(194,37,92,.13);--gold-tint-3:rgba(194,37,92,.2);
+  --gold-line:rgba(194,37,92,.3);--gold-line-2:rgba(194,37,92,.44);
+  --card-line:rgba(214,113,150,.34);--card-radius:22px;
+  --card-bg-a:rgba(255,255,255,.88);--card-bg-b:rgba(255,240,245,.74);
+  --card-shadow:0 10px 30px rgba(190,80,120,.13),inset 0 1px 0 rgba(255,255,255,.9);
+  --fx1:rgba(255,160,196,.5);--fx2:rgba(196,181,253,.34);--fx3:rgba(255,214,229,.6);--fx-op:.5;--fx-grain:.12;
+  --fx-sun-bg:radial-gradient(circle at 38% 34%,#fff9fb,#ffd0e0 62%,#f7a8c4);--fx-sun-glow:0 0 60px 20px rgba(255,160,196,.35);
+}
+:root[data-accent=sakura] body{background:radial-gradient(880px 500px at 10% -14%,rgba(244,114,182,.16),transparent 62%),var(--bg)}
+:root[data-accent=sakura] .fx-sun{display:block;left:80%;top:14%;width:170px;height:170px}
+:root[data-accent=sakura] .fx-grain{mix-blend-mode:multiply}
+:root[data-accent=sakura] .btn.primary{background:linear-gradient(135deg,#ff9ec0,#e0447c);color:#fff}
+
+/* 落日橙：巨大落日 + 双层山峦剪影 + 暖光 */
 :root[data-accent=sunset]{
-  --bg:#150a05;
-  --gold:#ffa94d;
-  --gold-2:#ffc078;
-  --amber:#ff8787;
-  --cyan:#fcc419;
-  --violet:#e599f7;
-  --hero-grad-a:#ffe8cc;
-  --gold-tint:rgba(255,169,77,.08);
-  --gold-tint-2:rgba(255,169,77,.14);
-  --gold-tint-3:rgba(255,169,77,.22);
-  --gold-line:rgba(255,169,77,.32);
-  --gold-line-2:rgba(255,169,77,.44);
-  --mask:rgba(16,6,2,.74);
+  --bg:#1a0a06;--surface:#241009;--inset:#170806;--raise:#33150b;
+  --text:#fff0e2;--dim:#c69a80;--faint:#966c58;--tag:#a07966;
+  --line:rgba(255,169,77,.16);--line-soft:rgba(255,169,77,.1);--line-hover:rgba(255,169,77,.32);
+  --gold:#ffb057;--gold-2:#ffd08a;--amber:#ff7a6b;--cyan:#fcc419;--violet:#f0a5c0;
+  --hero-grad-a:#fff0d4;--mask:rgba(18,6,2,.76);--hero-glow:rgba(255,146,61,.14);
+  --gold-tint:rgba(255,169,77,.08);--gold-tint-2:rgba(255,169,77,.14);--gold-tint-3:rgba(255,169,77,.22);
+  --gold-line:rgba(255,169,77,.32);--gold-line-2:rgba(255,169,77,.46);
+  --card-line:rgba(255,169,77,.26);--card-radius:18px;
+  --card-bg-a:rgba(44,17,9,.76);--card-bg-b:rgba(26,9,5,.66);
+  --card-shadow:0 14px 44px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,200,130,.09);
+  --fx1:rgba(249,115,22,.42);--fx2:rgba(239,68,68,.28);--fx3:rgba(250,204,21,.22);--fx-op:.6;--fx-grain:.05;
+  --fx-sun-bg:radial-gradient(circle at 42% 36%,#fff0b8,#ffab4d 52%,#f2602a 100%);--fx-sun-glow:0 0 120px 60px rgba(255,138,60,.32);
+  --fx-hill-a:#3b1408;--fx-hill-b:#1d0904;
 }
-:root[data-accent=sunset] body{
-  background:
-    radial-gradient(900px 520px at 12% -12%,rgba(249,115,22,.18),transparent 62%),
-    radial-gradient(760px 440px at 90% -6%,rgba(239,68,68,.13),transparent 58%),
-    radial-gradient(900px 560px at 50% 112%,rgba(250,204,21,.09),transparent 60%),
-    var(--bg);
-}
+:root[data-accent=sunset] .fx-sun{display:block}
+:root[data-accent=sunset] .fx-hills{display:block}
+:root[data-accent=sunset] .card,:root[data-accent=sunset] .stat{backdrop-filter:blur(6px)}
 :root[data-accent=sunset] .btn.primary{background:linear-gradient(135deg,#ffd8a8,#ff922b);color:#341a03}
 
-/* 星河紫：深紫夜空底，星屑慢闪 */
+/* 薄荷绿：玻璃拟态 + 双层波浪 + 气泡 */
+:root[data-accent=mint]{
+  --bg:#eefaf4;--surface:rgba(255,255,255,.88);--inset:#e2f4ea;--raise:#d8efe3;
+  --line:rgba(12,138,86,.16);--line-soft:rgba(12,138,86,.1);--line-hover:rgba(12,138,86,.3);--line-focus:rgba(12,138,86,.5);
+  --text:#123025;--dim:#4f7965;--faint:#7fa592;--tag:#7fa592;
+  --gold:#0a7f52;--gold-2:#065e3c;--amber:#0f9d8a;--mint:#059669;--cyan:#0e7490;--violet:#6d4bd8;
+  --hero-grad-a:#07553a;--mask:rgba(21,39,30,.4);--hero-glow:rgba(16,185,129,.1);
+  --gold-tint:rgba(12,138,86,.09);--gold-tint-2:rgba(12,138,86,.14);--gold-tint-3:rgba(12,138,86,.2);
+  --gold-line:rgba(12,138,86,.3);--gold-line-2:rgba(12,138,86,.44);
+  --card-line:rgba(255,255,255,.9);--card-radius:24px;
+  --card-bg-a:rgba(255,255,255,.66);--card-bg-b:rgba(255,255,255,.34);
+  --card-shadow:0 14px 36px rgba(16,90,60,.13),inset 0 1px 0 rgba(255,255,255,.9);
+  --fx1:rgba(52,211,153,.4);--fx2:rgba(45,212,191,.32);--fx3:rgba(167,243,208,.5);--fx-op:.5;--fx-grain:.06;
+  --fx-wave-a:rgba(255,255,255,.5);--fx-wave-b:rgba(52,211,153,.15);
+}
+:root[data-accent=mint] body{background:radial-gradient(880px 500px at 10% -14%,rgba(16,185,129,.14),transparent 62%),var(--bg)}
+:root[data-accent=mint] .card,:root[data-accent=mint] .stat{backdrop-filter:blur(14px) saturate(1.25)}
+:root[data-accent=mint] .fx-waves{display:block;animation:fxWaveDrift 13s ease-in-out infinite alternate}
+:root[data-accent=mint] .btn.primary{background:linear-gradient(135deg,#a7f3d0,#34d399);color:#03301f}
+
+/* 星河紫：旋转星环 + 星座连线 + 星云 */
 :root[data-accent=galaxy]{
-  --bg:#0a0616;
-  --gold:#c4b5fd;
-  --gold-2:#ddd6fe;
-  --amber:#f0abfc;
-  --cyan:#a5b4fc;
-  --violet:#818cf8;
-  --hero-grad-a:#ede9fe;
-  --gold-tint:rgba(196,181,253,.08);
-  --gold-tint-2:rgba(196,181,253,.14);
-  --gold-tint-3:rgba(196,181,253,.22);
-  --gold-line:rgba(196,181,253,.32);
-  --gold-line-2:rgba(196,181,253,.44);
-  --mask:rgba(6,3,16,.74);
+  --bg:#080515;--surface:#100a24;--inset:#0a0618;--raise:#1a1038;
+  --text:#f1ecff;--dim:#a99bcf;--faint:#76689c;--tag:#8f7fb5;
+  --line:rgba(196,181,253,.16);--line-soft:rgba(196,181,253,.1);--line-hover:rgba(196,181,253,.32);
+  --gold:#c4b5fd;--gold-2:#ddd6fe;--amber:#f0abfc;--cyan:#a5b4fc;--violet:#818cf8;
+  --hero-grad-a:#f3eefe;--mask:rgba(6,3,16,.76);--hero-glow:rgba(167,139,250,.13);
+  --gold-tint:rgba(196,181,253,.08);--gold-tint-2:rgba(196,181,253,.14);--gold-tint-3:rgba(196,181,253,.22);
+  --gold-line:rgba(196,181,253,.32);--gold-line-2:rgba(196,181,253,.46);
+  --card-line:rgba(167,139,250,.28);--card-radius:20px;
+  --card-bg-a:rgba(24,14,52,.72);--card-bg-b:rgba(10,6,26,.6);
+  --card-shadow:0 16px 48px rgba(0,0,0,.5),0 0 24px rgba(139,92,246,.12),inset 0 1px 0 rgba(221,214,254,.08);
+  --fx1:rgba(139,92,246,.4);--fx2:rgba(59,130,246,.28);--fx3:rgba(217,70,239,.26);--fx-op:.6;--fx-grain:.05;
+  --fx-ring-line:rgba(196,181,253,.22);--fx-ring-glow:rgba(139,92,246,.18);
+  --fx-star-line:rgba(196,181,253,.22);--fx-star:#e9d5ff;
 }
-:root[data-accent=galaxy] body{
-  background:
-    radial-gradient(900px 520px at 15% -12%,rgba(139,92,246,.17),transparent 62%),
-    radial-gradient(760px 440px at 88% -6%,rgba(59,130,246,.14),transparent 58%),
-    radial-gradient(900px 560px at 50% 112%,rgba(217,70,239,.09),transparent 60%),
-    var(--bg);
-}
+:root[data-accent=galaxy] .fx-ring{display:block}
+:root[data-accent=galaxy] .fx-const{display:block}
+:root[data-accent=galaxy] .card,:root[data-accent=galaxy] .stat{backdrop-filter:blur(8px)}
 :root[data-accent=galaxy] .btn.primary{background:linear-gradient(135deg,#ddd6fe,#a78bfa);color:#1e103d}
 
-/* 樱花粉：近白粉底，花瓣下落 */
-:root[data-accent=sakura]{
-  --bg:#fdf4f6;
-  --surface:#ffffff;
-  --inset:#f9edf1;
-  --raise:#f4e3e9;
-  --line:#efd7df;
-  --line-soft:#f5e6eb;
-  --line-hover:#dcb6c4;
-  --line-focus:#c493a7;
-  --text:#2b1a21;
-  --dim:#7c5f6b;
-  --faint:#a98d99;
-  --tag:#ab8e9a;
-  --gold:#c2255c;
-  --gold-2:#a61e4d;
-  --amber:#d6336c;
-  --mint:#0ca678;
-  --cyan:#1971c2;
-  --violet:#9c36b5;
-  --hero-grad-a:#a61e4d;
-  --grab:#e8ccd6;
-  --gold-tint:rgba(194,37,92,.08);
-  --gold-tint-2:rgba(194,37,92,.13);
-  --gold-tint-3:rgba(194,37,92,.2);
-  --gold-line:rgba(194,37,92,.3);
-  --gold-line-2:rgba(194,37,92,.42);
-  --mask:rgba(43,26,33,.42);
+/* 深海蓝：水下光束 + 波纹 + 气泡，冷玻璃卡片 */
+:root[data-accent=ocean]{
+  --bg:#03121f;--surface:#061c2c;--inset:#031420;--raise:#0a2b3e;
+  --text:#e2f7ff;--dim:#7fb2c6;--faint:#55879b;--tag:#5c8ea2;
+  --line:rgba(34,211,238,.16);--line-soft:rgba(34,211,238,.1);--line-hover:rgba(34,211,238,.32);
+  --gold:#67e8f9;--gold-2:#a5f3fc;--amber:#38bdf8;--cyan:#22d3ee;--mint:#2dd4bf;--violet:#818cf8;
+  --hero-grad-a:#d7fbff;--mask:rgba(2,12,20,.76);--hero-glow:rgba(103,232,249,.12);
+  --gold-tint:rgba(103,232,249,.08);--gold-tint-2:rgba(103,232,249,.14);--gold-tint-3:rgba(103,232,249,.22);
+  --gold-line:rgba(103,232,249,.32);--gold-line-2:rgba(103,232,249,.46);
+  --card-line:rgba(103,232,249,.26);--card-radius:20px;
+  --card-bg-a:rgba(7,36,54,.7);--card-bg-b:rgba(3,18,31,.62);
+  --card-shadow:0 14px 40px rgba(0,0,0,.4),inset 0 1px 0 rgba(165,243,252,.08);
+  --fx1:rgba(14,116,144,.5);--fx2:rgba(34,211,238,.26);--fx3:rgba(45,212,191,.2);--fx-op:.55;--fx-grain:.045;
+  --fx-beam:rgba(165,243,252,.09);--fx-wave-a:rgba(14,116,144,.28);--fx-wave-b:rgba(3,18,31,.5);
 }
-:root[data-accent=sakura] body{
-  background:
-    radial-gradient(880px 500px at 10% -14%,rgba(244,114,182,.20),transparent 62%),
-    radial-gradient(720px 420px at 94% -6%,rgba(196,181,253,.16),transparent 58%),
-    var(--bg);
-}
-:root[data-accent=sakura] .hero::before{background:radial-gradient(560px 190px at 0% -10%,rgba(194,37,92,.06),transparent 66%)}
-:root[data-accent=sakura] .btn.primary{background:linear-gradient(135deg,#ffd3e2,#ff8fb3);color:#4a0d24}
+:root[data-accent=ocean] body{background:radial-gradient(1000px 560px at 50% -20%,rgba(14,165,233,.16),transparent 65%),var(--bg)}
+:root[data-accent=ocean] .fx-beams{display:block}
+:root[data-accent=ocean] .fx-waves{display:block;animation:fxWaveDrift 16s ease-in-out infinite alternate}
+:root[data-accent=ocean] .card,:root[data-accent=ocean] .stat{backdrop-filter:blur(9px)}
+:root[data-accent=ocean] .btn.primary{background:linear-gradient(135deg,#a5f3fc,#0ea5e9);color:#03202e}
 
-/* 薄荷绿：近白绿底，气泡上浮 */
-:root[data-accent=mint]{
-  --bg:#f2faf5;
-  --surface:#ffffff;
-  --inset:#eaf5ef;
-  --raise:#e0efe7;
-  --line:#d6e8de;
-  --line-soft:#e6f2ec;
-  --line-hover:#b3d2c2;
-  --line-focus:#8bb8a1;
-  --text:#15271e;
-  --dim:#4f6b5d;
-  --faint:#7f9a8b;
-  --tag:#7f9a8b;
-  --gold:#0c8a56;
-  --gold-2:#096e45;
-  --amber:#c2620e;
-  --mint:#059669;
-  --cyan:#0e7490;
-  --violet:#6d4bd8;
-  --hero-grad-a:#085d3f;
-  --grab:#cfe4d8;
-  --gold-tint:rgba(12,138,86,.09);
-  --gold-tint-2:rgba(12,138,86,.14);
-  --gold-tint-3:rgba(12,138,86,.2);
-  --gold-line:rgba(12,138,86,.3);
-  --gold-line-2:rgba(12,138,86,.42);
-  --mask:rgba(21,39,30,.4);
+/* 水墨：宣纸底 + 远山墨晕 + 朱砂印，衬线数字、细直线边框 */
+:root[data-accent=ink]{
+  --bg:#f7f4ec;--surface:#fbf9f3;--inset:#efebe0;--raise:#e8e2d5;
+  --line:rgba(45,49,45,.2);--line-soft:rgba(45,49,45,.12);--line-hover:rgba(45,49,45,.34);--line-focus:rgba(45,49,45,.5);
+  --text:#232724;--dim:#5d635c;--faint:#8c918a;--tag:#8c918a;
+  --gold:#2f3531;--gold-2:#1c211e;--amber:#a5442f;--mint:#4b6b52;--cyan:#3c6470;--violet:#6c5a72;
+  --hero-grad-a:#1c211e;--mask:rgba(35,39,36,.38);--hero-glow:rgba(47,53,49,.05);
+  --gold-tint:rgba(47,53,49,.07);--gold-tint-2:rgba(47,53,49,.12);--gold-tint-3:rgba(47,53,49,.18);
+  --gold-line:rgba(47,53,49,.28);--gold-line-2:rgba(47,53,49,.42);
+  --card-line:rgba(45,49,45,.26);--card-radius:5px;
+  --card-bg-a:rgba(255,253,247,.9);--card-bg-b:rgba(248,244,234,.82);
+  --card-shadow:0 2px 10px rgba(50,45,35,.07),inset 0 0 0 1px rgba(255,255,255,.6);
+  --fx1:transparent;--fx2:transparent;--fx3:transparent;--fx-op:0;--fx-grain:.16;
 }
-:root[data-accent=mint] body{
-  background:
-    radial-gradient(880px 500px at 10% -14%,rgba(16,185,129,.16),transparent 62%),
-    radial-gradient(720px 420px at 94% -6%,rgba(45,212,191,.12),transparent 58%),
-    var(--bg);
+:root[data-accent=ink] body{background:radial-gradient(900px 500px at 12% -10%,rgba(183,65,47,.05),transparent 60%),var(--bg)}
+:root[data-accent=ink] .fx-ink{display:block}
+:root[data-accent=ink] .fx-grain{mix-blend-mode:multiply}
+:root[data-accent=ink] .num,:root[data-accent=ink] .hero-money,:root[data-accent=ink] .v,:root[data-accent=ink] .clock,:root[data-accent=ink] .duo .v{font-family:"Songti SC","STSong","SimSun",Georgia,serif}
+:root[data-accent=ink] .btn.primary{background:linear-gradient(135deg,#3b423d,#202522);color:#f7f4ec}
+
+/* 霓虹夜：3D 透视网格地平线 + 霓虹发光边框 + 扫描线、等宽数字 */
+:root[data-accent=neon]{
+  --bg:#090317;--surface:#120725;--inset:#0b0419;--raise:#1c0b36;
+  --text:#fdf2ff;--dim:#b48ecb;--faint:#7c5a97;--tag:#9a70b5;
+  --line:rgba(255,62,165,.2);--line-soft:rgba(255,62,165,.12);--line-hover:rgba(255,62,165,.36);
+  --gold:#ff5cb8;--gold-2:#ff9ad5;--amber:#22d3ee;--cyan:#22d3ee;--mint:#5eead4;--violet:#a855f7;
+  --hero-grad-a:#fff0fb;--mask:rgba(6,2,14,.78);--hero-glow:rgba(255,92,184,.14);
+  --gold-tint:rgba(255,92,184,.09);--gold-tint-2:rgba(255,92,184,.15);--gold-tint-3:rgba(255,92,184,.24);
+  --gold-line:rgba(255,92,184,.34);--gold-line-2:rgba(255,92,184,.5);
+  --card-line:rgba(255,92,184,.42);--card-radius:8px;
+  --card-bg-a:rgba(24,8,44,.76);--card-bg-b:rgba(10,4,24,.66);
+  --card-shadow:0 0 22px rgba(255,62,165,.16),inset 0 0 24px rgba(34,211,238,.05),0 12px 40px rgba(0,0,0,.45);
+  --fx1:rgba(255,62,165,.36);--fx2:rgba(34,211,238,.3);--fx3:rgba(168,85,247,.28);--fx-op:.6;--fx-grain:.045;
+  --fx-grid:rgba(255,62,165,.34);--fx-grid2:rgba(34,211,238,.3);
 }
-:root[data-accent=mint] .hero::before{background:radial-gradient(560px 190px at 0% -10%,rgba(12,138,86,.06),transparent 66%)}
-:root[data-accent=mint] .btn.primary{background:linear-gradient(135deg,#a7f3d0,#34d399);color:#03301f}
+:root[data-accent=neon] .fx-grid{display:block}
+:root[data-accent=neon] .fx-scan{display:block}
+:root[data-accent=neon] .card,:root[data-accent=neon] .stat{backdrop-filter:blur(6px)}
+:root[data-accent=neon] .num,:root[data-accent=neon] .hero-money,:root[data-accent=neon] .v,:root[data-accent=neon] .clock,:root[data-accent=neon] .duo .v{font-family:"Cascadia Mono",Consolas,ui-monospace,monospace;letter-spacing:-.02em}
+:root[data-accent=neon] .btn.primary{background:linear-gradient(135deg,#ff5cb8,#a855f7);color:#fff}
+
+/* ---------- 主题内的语义状态色 ----------
+   日历「已过 / 周末 / 节假日 / 今天」和鼓励语气泡在基础样式里写死了绿/紫/金，
+   暖色与东方主题里会串味。这里按主题各归各的色系，整套才像一个设计。 */
+:root[data-accent=sakura] .day.done{background:rgba(232,90,140,.14);border-color:rgba(232,90,140,.24);color:#a1305f}
+:root[data-accent=sakura] .day.holiday{background:rgba(156,54,181,.12);color:#8e2f9d}
+:root[data-accent=sakura] .day.today{background:linear-gradient(135deg,#ff9ec0,#e0447c);color:#fff;box-shadow:0 0 0 3px rgba(224,68,124,.18),0 4px 14px rgba(224,68,124,.26)}
+:root[data-accent=sakura] .day.today i{color:#fff0f5;opacity:.9}
+:root[data-accent=sakura] .msg{background:rgba(232,90,140,.05);border-color:rgba(232,90,140,.16)}
+:root[data-accent=sakura] .msg .acc{background:#e0447c}
+
+:root[data-accent=sunset] .day.done{background:rgba(255,169,77,.16);border-color:rgba(255,169,77,.26);color:#ffd08a}
+:root[data-accent=sunset] .day.weekend{background:rgba(255,120,113,.13);color:#ffc0ae}
+:root[data-accent=sunset] .day.holiday{background:rgba(240,165,192,.14);color:#f7b9d3}
+:root[data-accent=sunset] .day.today{background:linear-gradient(135deg,#ffd8a8,#ff7a45);color:#3a1603;box-shadow:0 0 0 3px rgba(255,146,61,.2),0 4px 16px rgba(255,120,60,.3)}
+:root[data-accent=sunset] .msg{background:rgba(255,169,77,.055);border-color:rgba(255,169,77,.2)}
+:root[data-accent=sunset] .msg .acc{background:#ffb057}
+
+:root[data-accent=galaxy] .day.done{background:rgba(167,139,250,.18);border-color:rgba(167,139,250,.28);color:#d8c8ff}
+:root[data-accent=galaxy] .day.holiday{background:rgba(240,171,252,.14);color:#f5c6ff}
+:root[data-accent=galaxy] .day.today{background:linear-gradient(135deg,#ddd6fe,#a855f7);color:#1e103d;box-shadow:0 0 0 3px rgba(167,139,250,.2),0 4px 18px rgba(139,92,246,.4)}
+:root[data-accent=galaxy] .msg{background:rgba(167,139,250,.06);border-color:rgba(167,139,250,.2)}
+:root[data-accent=galaxy] .msg .acc{background:#a78bfa}
+
+:root[data-accent=ink] .day.done{background:rgba(75,107,82,.12);border-color:rgba(75,107,82,.22);color:#3d5a45}
+:root[data-accent=ink] .day.weekend{background:rgba(60,100,112,.09);color:#3c6470}
+:root[data-accent=ink] .day.holiday{background:rgba(183,65,47,.11);color:#963c2b}
+:root[data-accent=ink] .day.today{background:linear-gradient(135deg,#c25b40,#a5442f);color:#fff8f2;box-shadow:0 0 0 3px rgba(165,68,47,.16),0 4px 14px rgba(165,68,47,.22)}
+:root[data-accent=ink] .day.today i{color:#fff0e6;opacity:.88}
+:root[data-accent=ink] .msg{background:rgba(47,53,49,.04);border-color:rgba(47,53,49,.14)}
+:root[data-accent=ink] .msg .acc{background:#4b6b52}
+:root[data-accent=ink] .badge[data-s=idle]{color:#5b4a58;background:rgba(108,90,114,.1);border-color:rgba(108,90,114,.24)}
 
 /* ---------- 大屏模式 ----------
    桌面壳检测到窗口接近铺满主屏（最大化或拖得很大）时给 <html> 加 bigscreen。
@@ -951,7 +1055,7 @@ html.bigscreen .day i{font-size:10px}
    所以这里直接读 localStorage 的原始值，不经过 Guliqi.normalize（那时引擎还没加载）。
    彩色主题名单跟 engine.js 的 THEME_LIST 保持一致（这边要赶在引擎加载前用，只能各放一份）。 */
 (function () {
-  var BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light' };
+  var BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light', ocean: 'dark', ink: 'light', neon: 'dark' };
   var mode = 'system';
   try {
     var s = localStorage.getItem('guliqi.cfg.v1');
@@ -972,6 +1076,64 @@ html.bigscreen .day i{font-size:10px}
 </script>
 </head>
 <body>
+<!-- 主题场景层：SVG 山峦 / 波浪 / 极光 / 星座 / 山水墨、3D 网格、落日光晕等。
+     全部固定铺满视口、不吃鼠标，按 <html data-accent> 决定显示哪一组。 -->
+<div class="fx" id="themeFx" aria-hidden="true">
+  <svg class="fx-svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <linearGradient id="fxAur1" x1="0" y1="0" x2="1" y2=".4">
+        <stop offset="0" stop-color="#2dd4bf" stop-opacity="0"></stop>
+        <stop offset=".42" stop-color="#5eead4" stop-opacity=".9"></stop>
+        <stop offset="1" stop-color="#a78bfa" stop-opacity="0"></stop>
+      </linearGradient>
+      <linearGradient id="fxAur2" x1="0" y1="0" x2="1" y2=".4">
+        <stop offset="0" stop-color="#7c3aed" stop-opacity="0"></stop>
+        <stop offset=".5" stop-color="#a78bfa" stop-opacity=".8"></stop>
+        <stop offset="1" stop-color="#22d3ee" stop-opacity="0"></stop>
+      </linearGradient>
+      <linearGradient id="fxWave1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff" stop-opacity=".24"></stop>
+        <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
+      </linearGradient>
+      <filter id="fxSoft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="38"></feGaussianBlur></filter>
+      <filter id="fxSoft2" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12"></feGaussianBlur></filter>
+    </defs>
+    <g class="fx-aurora">
+      <path d="M-120 250 C 220 40 540 390 840 170 S 1300 50 1560 230 L1560 400 C 1280 240 1040 510 760 330 S 200 290 -120 450 Z" fill="url(#fxAur1)" filter="url(#fxSoft)" opacity=".62"></path>
+      <path d="M-120 370 C 240 190 580 510 920 290 S 1320 210 1560 370 L1560 510 C 1300 350 1020 630 700 430 S 190 410 -120 550 Z" fill="url(#fxAur2)" filter="url(#fxSoft)" opacity=".48"></path>
+      <path d="M-120 140 C 300 20 620 260 980 110 S 1340 10 1560 130 L1560 210 C 1300 100 1060 300 760 200 S 240 150 -120 250 Z" fill="url(#fxAur1)" filter="url(#fxSoft)" opacity=".3"></path>
+    </g>
+    <g class="fx-hills">
+      <path d="M0 690 L160 570 L300 645 L500 505 L690 660 L880 555 L1090 675 L1270 545 L1440 645 L1440 900 L0 900 Z"></path>
+      <path d="M0 770 L190 690 L360 755 L560 655 L760 775 L980 680 L1180 770 L1440 690 L1440 900 L0 900 Z"></path>
+    </g>
+    <g class="fx-waves">
+      <path d="M0 710 C 240 650 480 775 720 715 S 1200 655 1440 715 L1440 900 L0 900 Z"></path>
+      <path d="M0 780 C 260 730 500 845 760 785 S 1220 730 1440 785 L1440 900 L0 900 Z"></path>
+    </g>
+    <g class="fx-const">
+      <path d="M170 170 L285 255 L430 195 L545 320 L715 235 L860 300 L1010 205"></path>
+      <path d="M285 255 L360 380 L545 320"></path>
+      <path d="M1040 520 L1160 445 L1290 505 L1360 400"></path>
+      <circle cx="170" cy="170" r="4"></circle><circle cx="285" cy="255" r="3"></circle>
+      <circle cx="430" cy="195" r="4"></circle><circle cx="545" cy="320" r="3"></circle>
+      <circle cx="715" cy="235" r="4"></circle><circle cx="860" cy="300" r="3"></circle>
+      <circle cx="1010" cy="205" r="4"></circle><circle cx="1160" cy="445" r="3"></circle>
+      <circle cx="1290" cy="505" r="4"></circle><circle cx="1360" cy="400" r="3"></circle>
+    </g>
+    <g class="fx-ink">
+      <circle cx="1170" cy="190" r="82" fill="#b7412f" opacity=".12" filter="url(#fxSoft2)"></circle>
+      <path d="M0 660 C 180 585 260 630 380 545 C 470 480 540 555 630 610 C 760 690 860 585 1010 620 C 1160 655 1280 590 1440 645 L1440 900 L0 900 Z" fill="#1e2321" opacity=".075" filter="url(#fxSoft2)"></path>
+      <path d="M0 760 C 220 700 400 805 620 735 C 850 665 1020 790 1240 730 C 1320 705 1380 715 1440 740 L1440 900 L0 900 Z" fill="#1e2321" opacity=".1" filter="url(#fxSoft)"></path>
+    </g>
+  </svg>
+  <div class="fx-sun"></div>
+  <div class="fx-ring"></div>
+  <div class="fx-grid"></div>
+  <div class="fx-beams"></div>
+  <div class="fx-glow ga"></div><div class="fx-glow gb"></div><div class="fx-glow gc"></div>
+  <div class="fx-grain"></div><div class="fx-scan"></div>
+</div>
 <canvas id="bgFx" aria-hidden="true"></canvas>
 <div class="app">
 
@@ -1114,7 +1276,7 @@ html.bigscreen .day i{font-size:10px}
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.14</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.15</button>
     </div>
   </footer>
 </div>
@@ -1243,25 +1405,19 @@ html.bigscreen .day i{font-size:10px}
     <div class="field adv-field">
       <label>界面主题</label>
       <div class="seg" id="fTheme" role="group" aria-label="界面主题">
-        <button type="button" data-theme-opt="system">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2"></rect><path d="M8.5 20.5h7M12 16.5v4"></path></svg>
-          跟随系统
-        </button>
-        <button type="button" data-theme-opt="light">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"></path></svg>
-          浅色
-        </button>
-        <button type="button" data-theme-opt="dark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 1 1 9.2 3.5a6.9 6.9 0 0 0 11.3 11.3z"></path></svg>
-          深色
-        </button>
-        <button type="button" data-theme-opt="aurora"><span class="sw" style="background:linear-gradient(135deg,#5eead4,#a78bfa)"></span>极光夜</button>
-        <button type="button" data-theme-opt="sakura"><span class="sw" style="background:linear-gradient(135deg,#ffa8c5,#f472b6)"></span>樱花粉</button>
-        <button type="button" data-theme-opt="sunset"><span class="sw" style="background:linear-gradient(135deg,#ffd43b,#ff6b6b)"></span>落日橙</button>
-        <button type="button" data-theme-opt="mint"><span class="sw" style="background:linear-gradient(135deg,#a7f3d0,#10b981)"></span>薄荷绿</button>
-        <button type="button" data-theme-opt="galaxy"><span class="sw" style="background:linear-gradient(135deg,#c4b5fd,#818cf8)"></span>星河紫</button>
+        <button type="button" data-theme-opt="system"><i class="sw" style="background:linear-gradient(100deg,#202632 0 50%,#eef1f5 50% 100%)"></i><span>跟随系统</span></button>
+        <button type="button" data-theme-opt="light"><i class="sw" style="background:linear-gradient(135deg,#ffffff,#f0f3f7 60%,#ffd27a)"></i><span>浅色</span></button>
+        <button type="button" data-theme-opt="dark"><i class="sw" style="background:linear-gradient(135deg,#0d1219,#1c2532 60%,#ffc857)"></i><span>深色</span></button>
+        <button type="button" data-theme-opt="aurora"><i class="sw" style="background:linear-gradient(115deg,#041b22,#2dd4bf 45%,#a78bfa 78%,#0a1030)"></i><span>极光夜</span></button>
+        <button type="button" data-theme-opt="sakura"><i class="sw" style="background:linear-gradient(115deg,#fdf4f6,#ffb3c9 48%,#f472b6 80%,#c8507f)"></i><span>樱花粉</span></button>
+        <button type="button" data-theme-opt="sunset"><i class="sw" style="background:linear-gradient(115deg,#2a1005,#ff922b 48%,#ff6b6b 78%,#4a1608)"></i><span>落日橙</span></button>
+        <button type="button" data-theme-opt="mint"><i class="sw" style="background:linear-gradient(115deg,#f2faf5,#a7f3d0 45%,#10b981 85%)"></i><span>薄荷绿</span></button>
+        <button type="button" data-theme-opt="galaxy"><i class="sw" style="background:linear-gradient(115deg,#0a0616,#7c3aed 45%,#f0abfc 82%,#1a1040)"></i><span>星河紫</span></button>
+        <button type="button" data-theme-opt="ocean"><i class="sw" style="background:linear-gradient(115deg,#03121f,#0e7490 45%,#22d3ee 82%,#04263a)"></i><span>深海蓝</span></button>
+        <button type="button" data-theme-opt="ink"><i class="sw" style="background:linear-gradient(115deg,#f7f4ec,#d9d2c2 45%,#3b403c 80%,#b7412f)"></i><span>水墨</span></button>
+        <button type="button" data-theme-opt="neon"><i class="sw" style="background:linear-gradient(115deg,#0b0618,#ff3ea5 45%,#22d3ee 82%,#160a2e)"></i><span>霓虹夜</span></button>
       </div>
-      <div class="hint">默认跟随系统，白天/夜间切换时界面自己跟着变；后五个是带背景动画的彩色主题。点一下立刻预览，点保存才记住。</div>
+      <div class="hint">每套主题都有独立配色、边框和背景动效。点一下立刻预览，点保存才记住；右上角快捷按钮仍只切深浅。</div>
     </div>
 
     <div class="field adv-field">
@@ -1496,11 +1652,12 @@ var Guliqi = (function () {
     demo_offset: 0     // 演示时钟相对真实时间的偏移（毫秒），0 = 不偏移
   };
 
-  // 彩色主题清单：aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 / galaxy 星河紫。
-  // 随返回对象导出，head 防闪脚本和 ui.js 共用这一份，别处不要再抄第二份名单。
+  // 彩色主题清单（8 套）：极光夜 / 樱花粉 / 落日橙 / 薄荷绿 / 星河紫 / 深海蓝 / 水墨 / 霓虹夜。
+  // 随返回对象导出，head 防闪脚本、ui.js、store.py 的名单都要与这里同步。
   var THEME_LIST = {
     system: 1, light: 1, dark: 1,
-    aurora: 1, sakura: 1, sunset: 1, mint: 1, galaxy: 1
+    aurora: 1, sakura: 1, sunset: 1, mint: 1, galaxy: 1,
+    ocean: 1, ink: 1, neon: 1
   };
 
   /* ---------- 小工具 ---------- */
@@ -2171,20 +2328,24 @@ var Lunar = (function () {
   var titleTick = 0;
 
   /* ---------- 主题 ----------
-     三种默认模式：system（跟随系统）/ light / dark，外加五个彩色主题
-     （aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 / galaxy 星河紫）。
+     三个默认模式：system（跟随系统）/ light / dark，外加八套彩色主题：
+     aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 /
+     galaxy 星河紫 / ocean 深海蓝 / ink 水墨 / neon 霓虹夜。
      名单以 engine.js 的 G.THEME_LIST 为准。
-     彩色主题 = 底色（深或浅）+ data-accent 挂的配色覆盖：
-       aurora / sunset / galaxy 用深色底，sakura / mint 用浅色底。
+     彩色主题 = 底色（深或浅）+ data-accent 挂的配色、卡片质感与背景场景层。
      head 里那段内联脚本已经在首帧之前画过一次，这里只负责之后的变化。 */
   var themeMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   var draftTheme = cfg.theme;      // 面板里点中但还没保存的值
   // 彩色主题名 → 底色（决定 data-theme 是深是浅，CSS 变量覆盖挂在 data-accent 上）
-  var THEME_BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light' };
+  var THEME_BASE = {
+    aurora: 'dark', sunset: 'dark', galaxy: 'dark', ocean: 'dark', neon: 'dark',
+    sakura: 'light', mint: 'light', ink: 'light'
+  };
   // 彩色主题的标题栏/任务栏颜色，跟各自 --bg 对应
   var ACCENT_META = {
-    aurora: '#041018', sunset: '#150a05', galaxy: '#0a0616',
-    sakura: '#fdf4f6', mint: '#f2faf5'
+    aurora: '#04121a', sunset: '#1a0a06', galaxy: '#080515',
+    sakura: '#fff5f7', mint: '#eefaf4',
+    ocean: '#03121f', ink: '#f7f4ec', neon: '#090317'
   };
 
   function sysIsDark() {
@@ -3512,14 +3673,18 @@ var Lunar = (function () {
     var COLORS_DARK = ['255,200,87', '78,205,196', '255,236,170'];
     var COLORS_LIGHT = ['176,132,32', '70,150,146', '120,130,160'];
 
-    /* 彩色主题各有自己的粒子配方：颜色、浓度、漂移速度、上浮/下落方向、颗粒大小。
-       vy 用 [min,max] 区间：负数上浮、正数下落（樱花粉是往下飘的）。 */
+    /* 八套彩色主题各有粒子配方：颜色、浓度、漂移方向、大小，还有形状。
+       vy 区间：负数上浮、正数下落（樱花瓣往下飘）。
+       shape：dot 圆点 / petal 旋转花瓣 / bubble 空心气泡 / star 四角星芒 / spark 竖直火星。 */
     var FX_PRESETS = {
-      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.20, vy: [-0.12, -0.03], vx: 0.06, r: [1.0, 3.0] },
-      sakura: { colors: ['244,114,182', '251,146,160', '196,181,253'], alpha: 0.30, vy: [0.06, 0.22], vx: 0.18, r: [1.2, 2.8] },
-      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.22, vy: [-0.20, -0.06], vx: 0.10, r: [0.8, 2.4] },
-      mint:   { colors: ['16,185,129', '52,211,153', '153,246,228'], alpha: 0.20, vy: [-0.16, -0.05], vx: 0.08, r: [0.9, 2.4] },
-      galaxy: { colors: ['221,214,254', '165,180,252', '240,171,252'], alpha: 0.16, vy: [-0.02, 0.02], vx: 0.03, r: [0.5, 1.6] }
+      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.14, vy: [-0.10, -0.03], vx: 0.05, r: [1.0, 2.6], shape: 'dot' },
+      sakura: { colors: ['244,114,182', '251,146,160', '255,190,212'], alpha: 0.34, vy: [0.06, 0.20], vx: 0.16, r: [1.6, 3.2], shape: 'petal' },
+      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.18, vy: [-0.18, -0.05], vx: 0.09, r: [0.9, 2.2], shape: 'spark' },
+      mint:   { colors: ['16,185,129', '52,211,153', '255,255,255'], alpha: 0.18, vy: [-0.16, -0.05], vx: 0.08, r: [1.2, 3.0], shape: 'bubble' },
+      galaxy: { colors: ['221,214,254', '165,180,252', '240,171,252'], alpha: 0.16, vy: [-0.02, 0.02], vx: 0.03, r: [0.7, 1.8], shape: 'star' },
+      ocean:  { colors: ['165,243,252', '34,211,238', '103,232,249'], alpha: 0.17, vy: [-0.14, -0.04], vx: 0.06, r: [1.2, 3.0], shape: 'bubble' },
+      ink:    { colors: ['60,66,61', '120,124,116', '183,65,47'], alpha: 0.10, vy: [-0.03, 0.01], vx: 0.02, r: [0.6, 2.0], shape: 'dot' },
+      neon:   { colors: ['255,92,184', '34,211,238', '168,85,247'], alpha: 0.16, vy: [-0.06, 0.02], vx: 0.04, r: [0.7, 1.9], shape: 'star' }
     };
 
     function fxConf() {
@@ -3529,7 +3694,7 @@ var Lunar = (function () {
       return {
         colors: light ? COLORS_LIGHT : COLORS_DARK,
         alpha: light ? 0.10 : 0.16,
-        vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6]
+        vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6], shape: 'dot'
       };
     }
     function rand(a, b) { return a + Math.random() * (b - a); }
@@ -3550,8 +3715,40 @@ var Lunar = (function () {
         vy: rand(c.vy[0], c.vy[1]),                                    // 上浮或下落
         tw: 0.4 + Math.random() * 0.9,                                 // 闪烁速度
         ph: Math.random() * Math.PI * 2,                               // 闪烁相位
+        rot: Math.random() * Math.PI * 2,                              // 花瓣/星芒朝向
+        rotV: (Math.random() - 0.5) * 0.012,                           // 自转速度
         c: Math.floor(Math.random() * c.colors.length)
       };
+    }
+
+    // 一个粒子按 shape 画成不同形状；只用到最基础的 Canvas API，46 个粒子每帧很轻
+    function drawParticle(p, rgb, a, shape) {
+      var fill = 'rgba(' + rgb + ',' + a.toFixed(3) + ')';
+      ctx.strokeStyle = fill;
+      ctx.fillStyle = fill;
+      if (shape === 'petal') {
+        ctx.save();
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.beginPath(); ctx.ellipse(0, 0, p.r * 1.7, p.r * 0.68, 0, 0, 6.2832);
+        ctx.fill(); ctx.restore();
+      } else if (shape === 'spark') {
+        ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 0.6, p.r * 1.9, 0, 0, 6.2832); ctx.fill();
+      } else if (shape === 'bubble') {
+        ctx.lineWidth = 0.9;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 1.5, 0, 6.2832); ctx.stroke();
+        ctx.fillStyle = 'rgba(' + rgb + ',' + (a * 0.22).toFixed(3) + ')';
+        ctx.fill();
+      } else if (shape === 'star') {
+        var R = p.r * 2.3;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(p.x - R, p.y); ctx.lineTo(p.x + R, p.y);
+        ctx.moveTo(p.x, p.y - R); ctx.lineTo(p.x, p.y + R);
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.55, 0, 6.2832); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
     }
     function resize() {
       /* clientWidth/Height 才是"看得见的那块"，innerWidth 含滚动条宽度：
@@ -3580,16 +3777,13 @@ var Lunar = (function () {
       ctx.clearRect(0, 0, W, H);
       for (var i = 0; i < N; i++) {
         var p = ps[i];
-        p.x += p.vx; p.y += p.vy;
+        p.x += p.vx; p.y += p.vy; p.rot += p.rotV;
         if (p.y < -6) { p.y = H + 6; p.x = Math.random() * W; }
         else if (p.y > H + 6) { p.y = -6; p.x = Math.random() * W; }
         if (p.x < -6) p.x = W + 6; else if (p.x > W + 6) p.x = -6;
         var a = conf.alpha * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
         if (a <= 0.01) continue;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, 6.2832);
-        ctx.fillStyle = 'rgba(' + conf.colors[p.c] + ',' + a.toFixed(3) + ')';
-        ctx.fill();
+        drawParticle(p, conf.colors[p.c], a, conf.shape);
       }
       if (running && !document.hidden) rafId = requestAnimationFrame(frame);
     }
