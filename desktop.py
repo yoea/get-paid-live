@@ -137,7 +137,11 @@ def autostart_set(enabled):
 
 
 def autostart_sync():
-    """首次运行默认就注册开机启动；之后只在"用户还开着但路径变了"时修一下。"""
+    """开机启动默认关闭（要不要随系统启动由用户自己在设置里勾）。
+
+    已经用过老版本的用户不受影响：库里记着 autostart_initialized，这里只在
+    "用户开着自启但 exe 路径变了" 时把注册表里的路径修一下，其余一律不动
+    ——开没开、什么时候开的，都以注册表里的现状为准。"""
     opts = load_options()
     if not opts.get("autostart_initialized"):
         opts["autostart_initialized"] = True
@@ -145,7 +149,7 @@ def autostart_sync():
         # 到点提醒默认开着：这是这个程序最主要的"被需要"时刻
         opts.setdefault("notify_schedule", True)
         save_options(opts)
-        autostart_set(True)
+        autostart_set(False)    # 保险起见清一下，正常情况下本来就没有
         return
     current = _autostart_value()
     if current and os.path.normcase(current) != os.path.normcase(_startup_command()):

@@ -256,8 +256,14 @@
       else if (cal.holidays[iso]) cls += ' holiday';
       else cls += ' weekend';
       if (notes[iso]) cls += ' hasnote';
+      // 小字：节日名优先（春节/中秋/除夕…），否则农历日，初一显示月名
+      var lab = (typeof Lunar !== 'undefined') && Lunar.dayLabel(dt);
+      var sub = lab ? lab.text : '';
+      if (lab && lab.festival) cls += ' fest';
       html += '<div class="' + cls + '" data-d="' + iso + '"'
-        + (notes[iso] ? ' title="' + escAttr(notes[iso]) + '"' : '') + '>' + d + '</div>';
+        + (notes[iso] ? ' title="' + escAttr(notes[iso]) + '"' : '') + '>'
+        + '<b>' + d + '</b>' + (sub ? '<i>' + sub + '</i>' : '')
+        + '</div>';
     }
     refs.days.innerHTML = html;
   }

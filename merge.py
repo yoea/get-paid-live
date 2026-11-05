@@ -30,6 +30,7 @@ BANNER = "<!-- 本文件由 merge.py 从 src/ 生成。要改东西请改 src/ �
 PARTS = (
     ('<link rel="stylesheet" href="app.css">', "app.css", "style"),
     ('<script src="engine.js"></script>', "engine.js", "script"),
+    ('<script src="lunar.js"></script>', "lunar.js", "script"),
     ('<script src="ui.js"></script>', "ui.js", "script"),
 )
 
