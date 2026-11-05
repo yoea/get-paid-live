@@ -1376,16 +1376,20 @@
      每帧只做 canvas 2D 绘制，浏览器把结果直接交给显卡合成；
      页面隐藏时暂停，系统开了「减少动态效果」时完全不跑。 */
   (function () {
-    var cv = $('bgFx');
+    var cv = $('bgFx'), rcv = $('rainFx');
     if (!cv || !cv.getContext) return;
     var reduceMotion = false;
     try { reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
     if (reduceMotion) return;
 
     var ctx = cv.getContext('2d');
+    // 雨滴单独一层，跑在内容之上；老产物没有这个节点时自动降级为不画
+    var rctx = rcv && rcv.getContext ? rcv.getContext('2d') : null;
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     var W = 0, H = 0;
     var N = 46, ps = [];
+    // 雨夜专属的小雨滴：与微光粒子分开管理，速度差十几倍，混跑会被配方拖住
+    var drops = [], ripples = [];
 
     /* 十二套场景各有粒子配方。vy 负上浮、正下落；shape 见 drawParticle。
        depth 用近/中/远三层：大小、速度、透明度、摆动幅度都不同，
@@ -1401,7 +1405,7 @@
       galaxy: { colors: ['221,214,254', '165,180,252', '240,171,252'], alpha: 0.16, vy: [-0.02, 0.02], vx: 0.03, r: [0.7, 1.8], shape: 'star' },
       ocean:  { colors: ['165,243,252', '34,211,238', '103,232,249'], alpha: 0.17, vy: [-0.14, -0.04], vx: 0.06, r: [1.2, 3.0], shape: 'bubble', sway: 1.1 },
       ink:    { colors: ['60,66,61', '120,124,116', '183,65,47'], alpha: 0.10, vy: [0.05, 0.14], vx: 0.03, r: [0.6, 1.6], shape: 'dot', sway: 0.4 },
-      neon:   { colors: ['255,92,184', '34,211,238', '168,85,247'], alpha: 0.16, vy: [0.04, 0.12], vx: 0.04, r: [0.7, 1.9], shape: 'star', sway: 0.5 },
+      neon:   { colors: ['255,92,184', '34,211,238', '168,85,247'], alpha: 0.16, vy: [0.04, 0.12], vx: 0.04, r: [0.7, 1.9], shape: 'star', sway: 0.5, drops: 34 },
       autumn: { colors: ['194,64,31', '224,138,30', '240,169,46', '75,122,58'], alpha: 0.38, vy: [0.05, 0.15], vx: 0.12, r: [2.0, 3.8], shape: 'leaf', gust: [9200, 0.72], sway: 2.8, lift: 0.32 },
       snow:   { colors: ['255,255,255', '200,225,240', '255,225,170'], alpha: 0.56, vy: [0.03, 0.11], vx: 0.05, r: [1.4, 3.2], shape: 'flake', gust: [14000, 0.32], sway: 1.6 }
     };
@@ -1496,6 +1500,68 @@
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
       }
     }
+
+    /* ---------- 雨夜：小雨滴 + 落地涟漪 ----------
+       斜落角度与 CSS 雨丝的 76° 一致（vx/vy = tan14° ≈ 0.25），
+       落到错开的「地面线」时留一个快速扩散的扁圆环，然后从头再落。 */
+    var DROP_RGB = ['120,220,240', '255,140,205', '176,140,247'];
+    function spawnDrop(w, h, first) {
+      var near = Math.random() < 0.4;
+      var v = near ? rand(1.6, 2.4) : rand(0.9, 1.5);
+      return {
+        x: Math.random() * (w + 120) - 60,
+        y: first ? Math.random() * h : -rand(20, 180),
+        r: near ? rand(2.0, 3.0) : rand(1.2, 2.1),
+        v: v, vx: v * 0.25,
+        a: near ? rand(0.45, 0.62) : rand(0.26, 0.40),
+        c: Math.floor(Math.random() * DROP_RGB.length),
+        ground: h - rand(6, 70)
+      };
+    }
+    function drawDrop(d) {
+      var rgb = DROP_RGB[d.c];
+      // 拖尾：速度感靠这条渐隐细线，水滴本身不用画很大
+      rctx.strokeStyle = 'rgba(' + rgb + ',' + (d.a * 0.42).toFixed(3) + ')';
+      rctx.lineWidth = Math.max(0.7, d.r * 0.5);
+      rctx.beginPath();
+      rctx.moveTo(d.x - d.vx * 6, d.y - d.v * 6 - d.r);
+      rctx.lineTo(d.x, d.y - d.r * 0.5);
+      rctx.stroke();
+      // 上尖下圆的雨滴
+      rctx.fillStyle = 'rgba(' + rgb + ',' + d.a.toFixed(3) + ')';
+      rctx.beginPath();
+      rctx.moveTo(d.x, d.y - d.r * 2.1);
+      rctx.bezierCurveTo(d.x + d.r * 0.95, d.y - d.r * 0.5, d.x + d.r, d.y + d.r * 0.5, d.x, d.y + d.r);
+      rctx.bezierCurveTo(d.x - d.r, d.y + d.r * 0.5, d.x - d.r * 0.95, d.y - d.r * 0.5, d.x, d.y - d.r * 2.1);
+      rctx.fill();
+    }
+    function drawRain(t, conf) {
+      if (!rctx) return;
+      if (!conf.drops) { if (drops.length) { drops.length = 0; ripples.length = 0; } return; }
+      if (!drops.length) for (var i = 0; i < conf.drops; i++) drops.push(spawnDrop(W, H, true));
+      for (var j = 0; j < drops.length; j++) {
+        var d = drops[j];
+        d.x += d.vx; d.y += d.v;
+        if (d.y >= d.ground) {
+          ripples.push({ x: d.x, y: d.ground, t0: t, rgb: DROP_RGB[d.c] });
+          d.y = -rand(20, 180); d.x = Math.random() * (W + 120) - 60;
+          d.ground = H - rand(6, 70);
+        }
+        if (d.x > W + 60) d.x = -60;
+        drawDrop(d);
+      }
+      // 涟漪独立于雨滴生命周期，按出生时间淡出
+      for (var k = ripples.length - 1; k >= 0; k--) {
+        var q = ripples[k], age = (t - q.t0) / 420;
+        if (age >= 1) { ripples.splice(k, 1); continue; }
+        rctx.strokeStyle = 'rgba(' + q.rgb + ',' + (0.5 * (1 - age)).toFixed(3) + ')';
+        rctx.lineWidth = 0.9;
+        rctx.beginPath();
+        rctx.ellipse(q.x, q.y, 2 + age * 11, (2 + age * 11) * 0.32, 0, 0, 6.2832);
+        rctx.stroke();
+      }
+    }
+
     function resize() {
       /* clientWidth/Height 才是"看得见的那块"，innerWidth 含滚动条宽度：
          用 innerWidth 铺画布会宽出十几像素，恰好逼出一条横向滚动条。 */
@@ -1506,6 +1572,11 @@
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (rctx) {
+        rcv.width = cv.width; rcv.height = cv.height;
+        rcv.style.width = W + 'px'; rcv.style.height = H + 'px';
+        rctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
     }
 
     resize();
@@ -1523,6 +1594,7 @@
       // 阵风：整片粒子被同一个正弦波推着走，近层吹得更明显
       var gust = conf.gust ? conf.gust[1] * Math.sin(t * 6.2832 / conf.gust[0]) : 0;
       ctx.clearRect(0, 0, W, H);
+      if (rctx) rctx.clearRect(0, 0, W, H);
       for (var i = 0; i < N; i++) {
         var p = ps[i];
         if (p.lift) p.vy += 0.0018;          // 被卷起后重力慢慢把它拉回来
@@ -1548,6 +1620,7 @@
         drawParticle(p, conf.colors[p.c], a, conf.shape);
         p.x -= dx;
       }
+      drawRain(t, conf);
       if (running && !document.hidden) rafId = requestAnimationFrame(frame);
     }
     function start() {
@@ -1559,6 +1632,7 @@
       running = false;
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
       ctx.clearRect(0, 0, W, H);
+      if (rctx) rctx.clearRect(0, 0, W, H);
     }
 
     /* 拖边框改尺寸时 resize 事件一帧能来好几次，而写 canvas.width 等于
@@ -1575,6 +1649,8 @@
         resize();
         // 尺寸变了重撒粒子，避免全挤在旧区域
         for (var k = 0; k < N; k++) ps[k] = spawn(W, H, layerOf(k));
+        // 雨滴的落地线按旧高度算，清空后下一帧重撒
+        drops.length = 0; ripples.length = 0;
       });
     }
     window.addEventListener('resize', onResize);

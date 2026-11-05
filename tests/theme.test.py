@@ -8,6 +8,7 @@ v1.4.16 起以 engine.js 的 THEME_META 为唯一真源，这里把防闪脚本�
 """
 import io
 import json
+import math
 import os
 import re
 import subprocess
@@ -87,6 +88,21 @@ def main():
     total += check("conf.gust" in ui and "conf.lift" in ui, "阵风与落瓣二次扬起")
     total += check("shape: 'petal'" in ui and "shape: 'leaf'" in ui
                    and "shape: 'flake'" in ui, "花瓣 / 枫叶 / 雪花形状")
+
+    # 雨丝：不能用 background-position 逐帧重绘（1px 硬边斜线会亚像素闪），
+    # 且循环位移在条纹法线上的投影必须是整数个周期，否则到头会瞬移一下。
+    total += check("animation:fxRain var(--fx-rain-dur" in css
+                   and "@keyframes fxRain{from{transform:translate3d(0,0,0)}"
+                       "to{transform:translate3d(-23.34px,96.52px,0)}}" in css,
+                   "雨丝走 transform 合成层")
+    rad = math.radians(76)
+    dot = -23.34 * math.sin(rad) + 96.52 * (-math.cos(rad))
+    total += check(abs(dot + 46) < 0.05, "雨丝循环位移在法线上的投影恰为一个周期(46px)")
+    total += check(re.search(r"drops:\s*\d+", ui) is not None
+                   and "spawnDrop" in ui and "drawRain(t, conf)" in ui
+                   and "--fx-rain-dur" in css, "雨夜小雨滴/落地涟漪与分主题雨速")
+    total += check('<canvas id="rainFx"' in head and "#rainFx{" in css
+                   and "rctx.clearRect" in ui, "雨滴走独立前景层，不被卡片模糊")
 
     # 落库白名单与引擎一致，并且真能原样存读
     total += check(tuple(store.THEME_VALUES) == tuple(keys), "store.THEME_VALUES 与引擎一致")

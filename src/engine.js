@@ -131,7 +131,7 @@ var Guliqi = (function () {
                scene: '江南烟雨，远山晕成淡墨，细雨里一叶乌篷船。' },
     neon:    { name: '雨夜霓虹粉', base: 'dark', meta: '#090317',
                sw: 'linear-gradient(115deg,#090317,#ff3ea5 45%,#22d3ee 82%,#160a2e)',
-               scene: '赛博雨夜，霓虹倒影拉长在湿地上，雨丝斜落。' },
+               scene: '赛博雨夜，霓虹倒影拉长在湿地上，雨丝斜落，小雨滴落地漾开涟漪。' },
     autumn:  { name: '秋山枫叶红', base: 'light', meta: '#fdf1e3',
                sw: 'linear-gradient(115deg,#fdf1e3,#e8593f 42%,#f0a92e 78%,#7a3b1d)',
                scene: '秋日山径，枫叶与银杏旋转飘落，斜阳穿过林间。' },

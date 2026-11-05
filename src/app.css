@@ -690,6 +690,12 @@ html.lock{overflow:hidden}
   position:fixed;inset:0;z-index:-1;pointer-events:none;
   transform:translateZ(0);will-change:transform;
 }
+/* 雨夜的小雨滴：单独一层垫在内容之上、弹窗之下（面板 60+，这里 2），
+   否则会被卡片的 backdrop-filter 糊成一团看不见。同样不吃鼠标。 */
+#rainFx{
+  position:fixed;inset:0;z-index:2;pointer-events:none;
+  transform:translateZ(0);
+}
 
 /* ---------- 浅色主题 ----------
    只覆盖语义变量，组件规则一条都不重写。
@@ -795,7 +801,7 @@ html.lock{overflow:hidden}
   animation:fxBeams 18s ease-in-out infinite alternate}
 .fx-grain{z-index:5;inset:0;opacity:var(--fx-grain,.05);mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-.fx-scan{z-index:5;inset:0;opacity:.55;background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 4px)}
+.fx-scan{z-index:5;inset:0;opacity:.42;background:repeating-linear-gradient(0deg,rgba(255,255,255,.016) 0 2px,transparent 2px 6px)}
 :root[data-accent] .fx-grain{display:block}
 
 /* ---------- 新增场景层：风 / 光束 / 雨丝 / 雾 / 窗光 / 流星 / 晨光窗格 ---------- */
@@ -807,9 +813,20 @@ html.lock{overflow:hidden}
 .fx-rays{z-index:0;inset:-30%;opacity:.62;
   background:repeating-linear-gradient(118deg,transparent 0 90px,var(--fx-ray,rgba(255,214,140,.12)) 90px 130px,transparent 130px 240px);
   filter:blur(22px);animation:fxRays 20s ease-in-out infinite alternate}
-.fx-rain{z-index:3;inset:-20%;opacity:var(--fx-rain-op,.26);
-  background:repeating-linear-gradient(76deg,transparent 0 22px,var(--fx-rain,rgba(200,220,230,.5)) 22px 23px,transparent 23px 46px);
-  animation:fxRain .9s linear infinite}
+/* 雨丝：76° 软边斜条纹。曾用 background-position 做动画，两个毛病一起犯：
+   ① 逐帧重绘 1px 硬边斜线，亚像素采样忽明忽暗；
+   ② 位移 -46px/92px 与条纹周期不对齐，循环到头图案瞬移，看得见地「闪一下」。
+   现在改走 transform 合成层，位移 d = -46·n + 88·t = (-23.34px, 96.52px)，
+   n=(sin76°,-cos76°) 是条纹法线、t 是条纹方向；d·n 恰好 -46px（一个周期），
+   循环首尾图案完全重合；96px 的竖直分量只负责「往下落」的观感。
+   上下各留 160px，小窗口里平移到底也不露边。 */
+.fx-rain{z-index:3;inset:-160px -20%;opacity:var(--fx-rain-op,.26);
+  background:repeating-linear-gradient(76deg,
+    transparent 0 20px,
+    var(--fx-rain,rgba(200,220,230,.5)) 22px 23.5px,
+    transparent 25.5px 46px);
+  will-change:transform;backface-visibility:hidden;
+  animation:fxRain var(--fx-rain-dur,1.15s) linear infinite}
 .fx-haze{z-index:1;left:-10%;right:-10%;bottom:0;height:58%;
   background:radial-gradient(70% 100% at 20% 100%,var(--fx-haze,rgba(255,255,255,.35)),transparent 70%),radial-gradient(60% 90% at 85% 100%,var(--fx-haze,rgba(255,255,255,.3)),transparent 70%);
   filter:blur(24px);animation:fxHaze 18s ease-in-out infinite alternate}
@@ -825,7 +842,7 @@ html.lock{overflow:hidden}
   animation:fxDay 24s ease-in-out infinite alternate}
 @keyframes fxWind{from{transform:translateX(-6%) skewX(-3deg);opacity:.14}to{transform:translateX(8%) skewX(4deg);opacity:.55}}
 @keyframes fxRays{from{transform:translateX(-3%)}to{transform:translateX(5%)}}
-@keyframes fxRain{from{background-position:0 0}to{background-position:-46px 92px}}
+@keyframes fxRain{from{transform:translate3d(0,0,0)}to{transform:translate3d(-23.34px,96.52px,0)}}
 @keyframes fxHaze{from{transform:translateX(-4%);opacity:.6}to{transform:translateX(5%);opacity:1}}
 @keyframes fxWinBreathe{from{opacity:.72}to{opacity:1}}
 @keyframes fxMeteor{0%,72%{opacity:0;transform:translate(0,0) rotate(-28deg)}76%{opacity:.9}88%{opacity:0;transform:translate(360px,190px) rotate(-28deg)}100%{opacity:0}}
@@ -1156,11 +1173,11 @@ html.lock{overflow:hidden}
 :root[data-accent=galaxy]{--fx-meteor:rgba(233,213,255,.9)}
 :root[data-accent=galaxy] .fx-meteor{display:block}
 :root[data-accent=ocean] .fx-jelly{display:block}
-:root[data-accent=ink]{--fx-rain:rgba(90,105,100,.4);--fx-rain-op:.2;--fx-haze:rgba(255,255,255,.5)}
+:root[data-accent=ink]{--fx-rain:rgba(90,105,100,.4);--fx-rain-op:.2;--fx-rain-dur:1.8s;--fx-haze:rgba(255,255,255,.5)}
 :root[data-accent=ink] .fx-rain{display:block}
 :root[data-accent=ink] .fx-boat{display:block}
 :root[data-accent=ink] .fx-haze{display:block}
-:root[data-accent=neon]{--fx-rain:rgba(120,220,240,.4);--fx-rain-op:.24}
+:root[data-accent=neon]{--fx-rain:rgba(120,220,240,.4);--fx-rain-op:.24;--fx-rain-dur:1.05s}
 :root[data-accent=neon] .fx-rain{display:block}
 
 /* ---------- 每套主题的进度条与提示气泡 ----------
