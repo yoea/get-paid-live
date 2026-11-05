@@ -27,43 +27,28 @@
   var titleTick = 0;
 
   /* ---------- 主题 ----------
-     三个默认模式：system（跟随系统）/ light / dark，外加八套彩色主题：
-     aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 /
-     galaxy 星河紫 / ocean 深海蓝 / ink 水墨 / neon 霓虹夜。
-     名单以 engine.js 的 G.THEME_LIST 为准。
-     彩色主题 = 底色（深或浅）+ data-accent 挂的配色、卡片质感与背景场景层。
-     head 里那段内联脚本已经在首帧之前画过一次，这里只负责之后的变化。 */
+     一个模式（system）+ 十二套「场景 + 意向 + 色彩」主题。
+     名称、场景文案、预览渐变、明暗基底全在 engine.js 的 G.THEME_META，这里不再抄名单。
+     data-theme 只表深/浅底，data-accent 指向具体场景；「跟随系统」按当前明暗
+     落到 light / dark 两套默认场景。head 里的内联脚本已在首帧之前画过一次。 */
   var themeMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   var draftTheme = cfg.theme;      // 面板里点中但还没保存的值
-  // 彩色主题名 → 底色（决定 data-theme 是深是浅，CSS 变量覆盖挂在 data-accent 上）
-  var THEME_BASE = {
-    aurora: 'dark', sunset: 'dark', galaxy: 'dark', ocean: 'dark', neon: 'dark',
-    sakura: 'light', mint: 'light', ink: 'light'
-  };
-  // 彩色主题的标题栏/任务栏颜色，跟各自 --bg 对应
-  var ACCENT_META = {
-    aurora: '#04121a', sunset: '#1a0a06', galaxy: '#080515',
-    sakura: '#fff5f7', mint: '#eefaf4',
-    ocean: '#03121f', ink: '#f7f4ec', neon: '#090317'
-  };
+  var TM = G.THEME_META;
 
   function sysIsDark() {
     return !!(themeMQ && themeMQ.matches);
   }
 
   function applyTheme(mode) {
-    var m = G.THEME_LIST[mode] ? mode : 'system';
-    var accent = THEME_BASE[m] ? m : '';
-    var dark = accent
-      ? THEME_BASE[m] === 'dark'
-      : (m === 'dark') || (m === 'system' && sysIsDark());
+    var m = TM[mode] ? mode : 'system';
+    var dark = (m === 'system') ? sysIsDark() : TM[m].base === 'dark';
+    var accent = (m === 'system') ? (dark ? 'dark' : 'light') : m;
     var root = document.documentElement;
     root.setAttribute('data-theme', dark ? 'dark' : 'light');
-    if (accent) root.setAttribute('data-accent', accent);
-    else root.removeAttribute('data-accent');
+    root.setAttribute('data-accent', accent);
     // 手机/独立窗口的标题栏、任务栏跳转列表都读这个
     var meta = document.querySelector('meta[name=theme-color]');
-    if (meta) meta.setAttribute('content', accent ? ACCENT_META[accent] : (dark ? '#07090d' : '#f5f6f8'));
+    if (meta) meta.setAttribute('content', TM[accent].meta);
     root.style.colorScheme = dark ? 'dark' : 'light';
     paintThemeBtn(dark);
   }
@@ -72,15 +57,30 @@
   function paintThemeBtn(dark) {
     var b = $('btnTheme');
     if (!b) return;
-    var tip = dark ? '切换到浅色主题' : '切换到深色主题';
+    var tip = dark ? '切换到晨光素纸白' : '切换到静夜砚墨黑';
     b.setAttribute('title', tip);
     b.setAttribute('aria-label', tip);
   }
 
-  function paintThemeSeg() {
+  /* 设置面板的 12 张预览卡由元数据生成；「跟随系统」是独立一行的模式开关。
+     新增主题只要改 engine.js 的 THEME_META，这里和回归用例都自动跟上。 */
+  function buildThemePicker() {
     var box = $('fTheme');
     if (!box) return;
-    var btns = box.querySelectorAll('button');
+    var html = '', keys = Object.keys(TM);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i], m = TM[k];
+      if (m.mode) continue;
+      html += '<button type="button" data-theme-opt="' + k + '">'
+        + '<i class="sw" style="background:' + m.sw + '"></i>'
+        + '<span>' + m.name + '</span></button>';
+    }
+    box.innerHTML = html;
+  }
+  buildThemePicker();
+
+  function paintThemeSeg() {
+    var btns = document.querySelectorAll('#fTheme button, #themeMode button');
     for (var i = 0; i < btns.length; i++) {
       var on = btns[i].getAttribute('data-theme-opt') === draftTheme;
       btns[i].classList.toggle('on', on);
@@ -88,9 +88,20 @@
     }
   }
 
-  // 系统明暗变化：只有"跟随系统"时才跟着动；用户明确选了浅/深就保持不变
+  // 选中哪套，就把它的场景意向讲清楚；跟随系统则说明此刻实际落在哪套
+  function paintThemeStory() {
+    var el = $('themeStory');
+    if (!el) return;
+    var m = TM[draftTheme] || TM.system;
+    var key = m.mode ? (sysIsDark() ? 'dark' : 'light') : draftTheme;
+    el.textContent = m.mode
+      ? '当前系统会用「' + TM[key].name + '」：' + TM[key].scene
+      : TM[key].name + ' · ' + TM[key].scene;
+  }
+
+  // 系统明暗变化：只有"跟随系统"时才跟着动；用户明确选了某套就保持不变
   function onSysThemeChange() {
-    if (cfg.theme === 'system') applyTheme('system');
+    if (cfg.theme === 'system') { applyTheme('system'); paintThemeStory(); }
   }
   if (themeMQ) {
     if (themeMQ.addEventListener) themeMQ.addEventListener('change', onSysThemeChange);
@@ -800,6 +811,7 @@
     $('fDemo').checked = !!cfg.demo;
     draftTheme = cfg.theme;
     paintThemeSeg();
+    paintThemeStory();
     $('fDemoTime').value = (cfg.demo && cfg.demo_offset) ? hhmmOf(minOfDate(nowAt())) : '';
     renderDemoChips();
     syncDemoUI(false);
@@ -816,6 +828,7 @@
     if (firstRun) return;        // 首次设置不许跳过
     // 面板里试过的主题没保存，关掉就退回已保存的那个
     if (draftTheme !== cfg.theme) { draftTheme = cfg.theme; applyTheme(cfg.theme); }
+    paintThemeStory();
     sheet.classList.remove('open');
     syncLock();
   }
@@ -835,6 +848,7 @@
     desk.send('save_cfg', cfg);
     applyTheme(next);
     paintThemeSeg();
+    paintThemeStory();
   });
   $('mask').addEventListener('click', closeSheet);
   $('btnCancel').addEventListener('click', closeSheet);
@@ -855,16 +869,19 @@
   });
 
   // 主题：点了立刻预览，保存才落盘（跟面板里其他项的手感一致）
-  $('fTheme').addEventListener('click', function (e) {
+  function onThemePick(e) {
     var b = e.target && e.target.closest ? e.target.closest('button') : null;
     if (!b) return;
     var v = b.getAttribute('data-theme-opt');
     if (!v) return;
-    // 名单跟 engine.js 的 THEME_LIST 走；别再写死浅/深两选一，否则彩色主题点了会被吞掉
-    draftTheme = G.THEME_LIST[v] ? v : 'system';
+    // 名单跟 engine.js 的 THEME_META 走；别再写死浅/深两选一，否则彩色主题点了会被吞掉
+    draftTheme = TM[v] ? v : 'system';
     applyTheme(draftTheme);
     paintThemeSeg();
-  });
+    paintThemeStory();
+  }
+  $('fTheme').addEventListener('click', onThemePick);
+  $('themeMode').addEventListener('click', onThemePick);
 
   weekBtns.forEach(function (b) {
     b.addEventListener('click', function () {
@@ -972,6 +989,7 @@
     G.markReady();
     desk.send('save_cfg', cfg);
     applyTheme(cfg.theme);   // 已保存值可能和预览值相同，重放一次不会有副作用
+    paintThemeStory();
     saveDeskOpts();          // 开机启动 / 检查更新交由桌面层落到系统里
     firstRun = false;
     panel.classList.remove('setup');
@@ -1008,6 +1026,7 @@
     // 配置清空 = 主题也回到默认，别让界面停在用户刚选的浅/深色上
     draftTheme = cfg.theme;
     applyTheme(cfg.theme);
+    paintThemeStory();
     refs.hideTxt.textContent = '隐藏金额';
     openSheet(true);          // 重设 = 再走一次首次引导
   });
@@ -1368,35 +1387,40 @@
     var W = 0, H = 0;
     var N = 46, ps = [];
 
-    // 默认深/浅色的粒子配色（无彩色主题时按 data-theme 二选一）
-    var COLORS_DARK = ['255,200,87', '78,205,196', '255,236,170'];
-    var COLORS_LIGHT = ['176,132,32', '70,150,146', '120,130,160'];
-
-    /* 八套彩色主题各有粒子配方：颜色、浓度、漂移方向、大小，还有形状。
-       vy 区间：负数上浮、正数下落（樱花瓣往下飘）。
-       shape：dot 圆点 / petal 旋转花瓣 / bubble 空心气泡 / star 四角星芒 / spark 竖直火星。 */
+    /* 十二套场景各有粒子配方。vy 负上浮、正下落；shape 见 drawParticle。
+       depth 用近/中/远三层：大小、速度、透明度、摆动幅度都不同，
+       于是「大小不一、缓慢飘落」才有纵深；gust:[周期ms,强度] 是整片粒子
+       被阵风一起吹偏；sway 是单体左右摆动；lift 是落到底被风重新卷起的概率。 */
     var FX_PRESETS = {
-      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.14, vy: [-0.10, -0.03], vx: 0.05, r: [1.0, 2.6], shape: 'dot' },
-      sakura: { colors: ['244,114,182', '251,146,160', '255,190,212'], alpha: 0.34, vy: [0.06, 0.20], vx: 0.16, r: [1.6, 3.2], shape: 'petal' },
-      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.18, vy: [-0.18, -0.05], vx: 0.09, r: [0.9, 2.2], shape: 'spark' },
-      mint:   { colors: ['16,185,129', '52,211,153', '255,255,255'], alpha: 0.18, vy: [-0.16, -0.05], vx: 0.08, r: [1.2, 3.0], shape: 'bubble' },
+      light:  { colors: ['176,132,32', '200,165,90', '120,130,160'], alpha: 0.09, vy: [-0.16, -0.04], vx: 0.08, r: [0.7, 2.2], shape: 'dot' },
+      dark:   { colors: ['255,200,87', '78,205,196', '255,236,170'], alpha: 0.15, vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6], shape: 'dot' },
+      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.14, vy: [-0.10, -0.03], vx: 0.05, r: [1.0, 2.6], shape: 'dot', sway: 0.8 },
+      sakura: { colors: ['244,114,182', '251,146,160', '255,190,212', '141,191,122'], alpha: 0.36, vy: [0.05, 0.16], vx: 0.10, r: [1.8, 3.4], shape: 'petal', gust: [8200, 0.62], sway: 2.4, lift: 0.36 },
+      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.18, vy: [-0.18, -0.05], vx: 0.09, r: [0.9, 2.2], shape: 'spark', sway: 0.7 },
+      mint:   { colors: ['16,185,129', '52,211,153', '255,255,255'], alpha: 0.17, vy: [-0.16, -0.05], vx: 0.07, r: [1.2, 3.0], shape: 'bubble', sway: 0.9 },
       galaxy: { colors: ['221,214,254', '165,180,252', '240,171,252'], alpha: 0.16, vy: [-0.02, 0.02], vx: 0.03, r: [0.7, 1.8], shape: 'star' },
-      ocean:  { colors: ['165,243,252', '34,211,238', '103,232,249'], alpha: 0.17, vy: [-0.14, -0.04], vx: 0.06, r: [1.2, 3.0], shape: 'bubble' },
-      ink:    { colors: ['60,66,61', '120,124,116', '183,65,47'], alpha: 0.10, vy: [-0.03, 0.01], vx: 0.02, r: [0.6, 2.0], shape: 'dot' },
-      neon:   { colors: ['255,92,184', '34,211,238', '168,85,247'], alpha: 0.16, vy: [-0.06, 0.02], vx: 0.04, r: [0.7, 1.9], shape: 'star' }
+      ocean:  { colors: ['165,243,252', '34,211,238', '103,232,249'], alpha: 0.17, vy: [-0.14, -0.04], vx: 0.06, r: [1.2, 3.0], shape: 'bubble', sway: 1.1 },
+      ink:    { colors: ['60,66,61', '120,124,116', '183,65,47'], alpha: 0.10, vy: [0.05, 0.14], vx: 0.03, r: [0.6, 1.6], shape: 'dot', sway: 0.4 },
+      neon:   { colors: ['255,92,184', '34,211,238', '168,85,247'], alpha: 0.16, vy: [0.04, 0.12], vx: 0.04, r: [0.7, 1.9], shape: 'star', sway: 0.5 },
+      autumn: { colors: ['194,64,31', '224,138,30', '240,169,46', '75,122,58'], alpha: 0.38, vy: [0.05, 0.15], vx: 0.12, r: [2.0, 3.8], shape: 'leaf', gust: [9200, 0.72], sway: 2.8, lift: 0.32 },
+      snow:   { colors: ['255,255,255', '200,225,240', '255,225,170'], alpha: 0.56, vy: [0.03, 0.11], vx: 0.05, r: [1.4, 3.2], shape: 'flake', gust: [14000, 0.32], sway: 1.6 }
     };
 
     function fxConf() {
       var a = document.documentElement.getAttribute('data-accent');
       if (a && FX_PRESETS[a]) return FX_PRESETS[a];
-      var light = document.documentElement.getAttribute('data-theme') === 'light';
-      return {
-        colors: light ? COLORS_LIGHT : COLORS_DARK,
-        alpha: light ? 0.10 : 0.16,
-        vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6], shape: 'dot'
-      };
+      return document.documentElement.getAttribute('data-theme') === 'light'
+        ? FX_PRESETS.light : FX_PRESETS.dark;
     }
     function rand(a, b) { return a + Math.random() * (b - a); }
+
+    // 近 12 / 中 16 / 远 18，共 46 个粒子；总数不增，只是分层给人纵深感
+    var LAYER = [
+      { r: 1.9, a: 1.25, v: 1.35, s: 1.5 },
+      { r: 1.0, a: 1.00, v: 1.00, s: 1.0 },
+      { r: 0.55, a: 0.60, v: 0.65, s: 0.55 }
+    ];
+    function layerOf(i) { return i < 12 ? 0 : (i < 28 ? 1 : 2); }
 
     // 主题切换后粒子还在按旧配方跑，靠 key 比对发现变了就整批重撒
     var fxKey = '';
@@ -1405,17 +1429,22 @@
       return (root.getAttribute('data-accent') || '') + '|' + (root.getAttribute('data-theme') || '');
     }
 
-    function spawn(w, h) {
-      var c = fxConf();
+    function spawn(w, h, layer) {
+      var c = fxConf(), L = LAYER[layer];
+      var vy = rand(c.vy[0], c.vy[1]) * L.v;
       return {
         x: Math.random() * w, y: Math.random() * h,
-        r: rand(c.r[0], c.r[1]),                                       // 半径（CSS px）
+        r: rand(c.r[0], c.r[1]) * L.r,                                 // 半径（CSS px）
+        layer: layer,
         vx: (Math.random() - 0.5) * 2 * c.vx,                          // 水平漂移
-        vy: rand(c.vy[0], c.vy[1]),                                    // 上浮或下落
+        vy: vy, baseVy: vy,                                            // 上浮/下落，baseVy 供二次扬起后复位
         tw: 0.4 + Math.random() * 0.9,                                 // 闪烁速度
         ph: Math.random() * Math.PI * 2,                               // 闪烁相位
-        rot: Math.random() * Math.PI * 2,                              // 花瓣/星芒朝向
-        rotV: (Math.random() - 0.5) * 0.012,                           // 自转速度
+        rot: Math.random() * Math.PI * 2,                              // 花瓣/叶片朝向
+        rotV: (Math.random() - 0.5) * 0.014,                           // 自转速度
+        sway: (c.sway || 0) * L.s,                                     // 左右摆动幅度
+        swaySpeed: 0.6 + Math.random() * 0.8,
+        lift: false,                                                   // 是否正被风重新卷起
         c: Math.floor(Math.random() * c.colors.length)
       };
     }
@@ -1430,6 +1459,24 @@
         ctx.translate(p.x, p.y); ctx.rotate(p.rot);
         ctx.beginPath(); ctx.ellipse(0, 0, p.r * 1.7, p.r * 0.68, 0, 0, 6.2832);
         ctx.fill(); ctx.restore();
+      } else if (shape === 'leaf') {
+        ctx.save();
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.beginPath(); ctx.ellipse(0, 0, p.r * 1.5, p.r * 0.72, 0, 0, 6.2832); ctx.fill();
+        ctx.lineWidth = 0.6;
+        ctx.strokeStyle = 'rgba(' + rgb + ',' + (a * 0.55).toFixed(3) + ')';
+        ctx.beginPath(); ctx.moveTo(-p.r * 1.4, 0); ctx.lineTo(p.r * 1.4, 0); ctx.stroke();
+        ctx.restore();
+      } else if (shape === 'flake') {
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        for (var k = 0; k < 3; k++) {
+          var ang = k * Math.PI / 3, R = p.r * 1.8;
+          ctx.moveTo(p.x - Math.cos(ang) * R, p.y - Math.sin(ang) * R);
+          ctx.lineTo(p.x + Math.cos(ang) * R, p.y + Math.sin(ang) * R);
+        }
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.5, 0, 6.2832); ctx.fill();
       } else if (shape === 'spark') {
         ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 0.6, p.r * 1.9, 0, 0, 6.2832); ctx.fill();
       } else if (shape === 'bubble') {
@@ -1438,11 +1485,11 @@
         ctx.fillStyle = 'rgba(' + rgb + ',' + (a * 0.22).toFixed(3) + ')';
         ctx.fill();
       } else if (shape === 'star') {
-        var R = p.r * 2.3;
+        var R2 = p.r * 2.3;
         ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.moveTo(p.x - R, p.y); ctx.lineTo(p.x + R, p.y);
-        ctx.moveTo(p.x, p.y - R); ctx.lineTo(p.x, p.y + R);
+        ctx.moveTo(p.x - R2, p.y); ctx.lineTo(p.x + R2, p.y);
+        ctx.moveTo(p.x, p.y - R2); ctx.lineTo(p.x, p.y + R2);
         ctx.stroke();
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.55, 0, 6.2832); ctx.fill();
       } else {
@@ -1462,7 +1509,7 @@
     }
 
     resize();
-    for (var i = 0; i < N; i++) ps.push(spawn(W, H));
+    for (var i = 0; i < N; i++) ps.push(spawn(W, H, layerOf(i)));
 
     var running = false, rafId = 0;
     function frame(t) {
@@ -1470,19 +1517,36 @@
       var sig = fxSignature();
       if (sig !== fxKey) {
         fxKey = sig;
-        for (var s = 0; s < N; s++) ps[s] = spawn(W, H);
+        for (var s = 0; s < N; s++) ps[s] = spawn(W, H, layerOf(s));
       }
       var conf = fxConf();
+      // 阵风：整片粒子被同一个正弦波推着走，近层吹得更明显
+      var gust = conf.gust ? conf.gust[1] * Math.sin(t * 6.2832 / conf.gust[0]) : 0;
       ctx.clearRect(0, 0, W, H);
       for (var i = 0; i < N; i++) {
         var p = ps[i];
-        p.x += p.vx; p.y += p.vy; p.rot += p.rotV;
-        if (p.y < -6) { p.y = H + 6; p.x = Math.random() * W; }
-        else if (p.y > H + 6) { p.y = -6; p.x = Math.random() * W; }
-        if (p.x < -6) p.x = W + 6; else if (p.x > W + 6) p.x = -6;
-        var a = conf.alpha * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
+        if (p.lift) p.vy += 0.0018;          // 被卷起后重力慢慢把它拉回来
+        p.x += p.vx + gust * (p.layer === 0 ? 1.3 : p.layer === 1 ? 1 : 0.65);
+        p.y += p.vy; p.rot += p.rotV;
+        if (p.y < -8) { p.y = H + 8; p.x = Math.random() * W; p.lift = false; p.vy = p.baseVy; }
+        else if (p.y > H + 8) {
+          // 落地的一部分被风重新卷起，形成一阵一阵的「叶阵 / 花瓣回旋」
+          if (conf.lift && !p.lift && Math.random() < conf.lift) {
+            p.y = H - rand(30, 150);
+            p.vy = -rand(0.10, 0.26) * (p.layer === 0 ? 1.2 : 1);
+            p.lift = true;
+          } else {
+            p.y = -8; p.x = Math.random() * W; p.lift = false; p.vy = p.baseVy;
+          }
+        }
+        if (p.x < -8) p.x = W + 8; else if (p.x > W + 8) p.x = -8;
+        var a = conf.alpha * LAYER[p.layer].a * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
         if (a <= 0.01) continue;
+        // 摆动只改绘制位置，不改粒子本身坐标，避免逐帧累积漂走
+        var dx = p.sway ? Math.sin(t * 0.001 * p.swaySpeed + p.ph) * p.sway : 0;
+        p.x += dx;
         drawParticle(p, conf.colors[p.c], a, conf.shape);
+        p.x -= dx;
       }
       if (running && !document.hidden) rafId = requestAnimationFrame(frame);
     }
@@ -1510,7 +1574,7 @@
         if (w === W && h === H && dpr === Math.min(window.devicePixelRatio || 1, 2)) return;
         resize();
         // 尺寸变了重撒粒子，避免全挤在旧区域
-        for (var k = 0; k < N; k++) ps[k] = spawn(W, H);
+        for (var k = 0; k < N; k++) ps[k] = spawn(W, H, layerOf(k));
       });
     }
     window.addEventListener('resize', onResize);
@@ -1548,6 +1612,7 @@
       cfg = G.normalize(raw);
     }
     applyTheme(cfg.theme);
+    paintThemeStory();
     refs.hideTxt.textContent = cfg.display.hide_money ? '显示金额' : '隐藏金额';
     start();
   }

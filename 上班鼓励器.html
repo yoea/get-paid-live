@@ -255,7 +255,7 @@ body{
 .bar{position:relative;height:11px;border-radius:999px;background:var(--raise);border:1px solid var(--line);overflow:hidden}
 /* 过渡：宽度每次变化都平滑插值（午休停在原地、13:00 突然跳一格这类场景不再生硬）。
    缓动取"起步快、收尾稳"的曲线，60fps 下逐帧微调时视觉上就是匀速滑动。 */
-.bar>i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#2fbf82,#4ade9f 42%,#ffc857 100%);box-shadow:0 0 12px rgba(74,222,159,.3);transition:width .3s cubic-bezier(.33,0,.2,1)}
+.bar>i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--bar-a,#2fbf82),var(--bar-b,#4ade9f) 42%,var(--bar-c,#ffc857) 100%);box-shadow:0 0 12px var(--bar-glow,rgba(74,222,159,.3));transition:width .3s cubic-bezier(.33,0,.2,1)}
 /* 午休：轴按"当天时间"做刻度，午休段就按真实时长占位（1 小时 / 9 小时 ≈ 11%），
    left 与 width 都由 JS 按上下班和午休时间算，这里不写死。
    底色用 --surface（深色比轨道更深、浅色比轨道更白），条纹叠在它上面 ⇒ 整段不透明，
@@ -790,6 +790,8 @@ html.lock{overflow:hidden}
 .fx-sun{z-index:1;width:min(46vw,430px);height:min(46vw,430px);left:50%;top:58%;border-radius:50%;background:var(--fx-sun-bg);box-shadow:var(--fx-sun-glow);animation:fxSunBreathe 13s ease-in-out infinite alternate}
 .fx-hills path:nth-child(1){fill:var(--fx-hill-a,#3b1408)}
 .fx-hills path:nth-child(2){fill:var(--fx-hill-b,#1d0904)}
+.fx-dunes path:nth-child(1){fill:var(--fx-hill-a,#7a2e10)}
+.fx-dunes path:nth-child(2){fill:var(--fx-hill-b,#3b1408)}
 .fx-waves path:nth-child(1){fill:var(--fx-wave-a,rgba(255,255,255,.4))}
 .fx-waves path:nth-child(2){fill:var(--fx-wave-b,rgba(255,255,255,.2))}
 .fx-const path{fill:none;stroke:var(--fx-star-line,rgba(196,181,253,.22));stroke-width:1.2}
@@ -807,6 +809,39 @@ html.lock{overflow:hidden}
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 .fx-scan{z-index:5;inset:0;opacity:.55;background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 4px)}
 :root[data-accent] .fx-grain{display:block}
+
+/* ---------- 新增场景层：风 / 光束 / 雨丝 / 雾 / 窗光 / 流星 / 晨光窗格 ---------- */
+.fx-wind{z-index:1;inset:-10%;opacity:.5;
+  background:repeating-linear-gradient(172deg,transparent 0 74px,var(--fx-wind,rgba(255,255,255,.22)) 74px 76px,transparent 76px 150px);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 28%,#000 72%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 28%,#000 72%,transparent);
+  animation:fxWind 11s ease-in-out infinite alternate}
+.fx-rays{z-index:0;inset:-30%;opacity:.62;
+  background:repeating-linear-gradient(118deg,transparent 0 90px,var(--fx-ray,rgba(255,214,140,.12)) 90px 130px,transparent 130px 240px);
+  filter:blur(22px);animation:fxRays 20s ease-in-out infinite alternate}
+.fx-rain{z-index:3;inset:-20%;opacity:var(--fx-rain-op,.26);
+  background:repeating-linear-gradient(76deg,transparent 0 22px,var(--fx-rain,rgba(200,220,230,.5)) 22px 23px,transparent 23px 46px);
+  animation:fxRain .9s linear infinite}
+.fx-haze{z-index:1;left:-10%;right:-10%;bottom:0;height:58%;
+  background:radial-gradient(70% 100% at 20% 100%,var(--fx-haze,rgba(255,255,255,.35)),transparent 70%),radial-gradient(60% 90% at 85% 100%,var(--fx-haze,rgba(255,255,255,.3)),transparent 70%);
+  filter:blur(24px);animation:fxHaze 18s ease-in-out infinite alternate}
+.fx-window{z-index:1;right:6%;top:11%;width:min(24vw,240px);height:min(31vh,270px);border-radius:120px 120px 8px 8px;
+  background:var(--fx-win,radial-gradient(circle at 50% 40%,rgba(255,214,150,.55),rgba(255,186,90,.18) 65%,transparent 78%));
+  box-shadow:0 0 90px 40px var(--fx-win-glow,rgba(255,190,100,.22));
+  border:6px solid var(--fx-frame,rgba(120,140,160,.35));animation:fxWinBreathe 7s ease-in-out infinite alternate}
+.fx-window::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 48%,var(--fx-frame,rgba(120,140,160,.35)) 48% 52%,transparent 52%),linear-gradient(0deg,transparent 48%,var(--fx-frame,rgba(120,140,160,.35)) 48% 52%,transparent 52%)}
+.fx-meteor{z-index:3;left:12%;top:8%;width:180px;height:2px;background:linear-gradient(90deg,transparent,var(--fx-meteor,#fff));opacity:0;transform:rotate(-28deg);animation:fxMeteor 9s ease-in infinite}
+.fx-daylight{z-index:1;inset:0;opacity:.5;
+  background:linear-gradient(118deg,transparent 0 22%,var(--fx-day,rgba(255,225,170,.13)) 22% 26%,transparent 26% 48%,var(--fx-day,rgba(255,225,170,.1)) 48% 51%,transparent 51%);
+  animation:fxDay 24s ease-in-out infinite alternate}
+@keyframes fxWind{from{transform:translateX(-6%) skewX(-3deg);opacity:.14}to{transform:translateX(8%) skewX(4deg);opacity:.55}}
+@keyframes fxRays{from{transform:translateX(-3%)}to{transform:translateX(5%)}}
+@keyframes fxRain{from{background-position:0 0}to{background-position:-46px 92px}}
+@keyframes fxHaze{from{transform:translateX(-4%);opacity:.6}to{transform:translateX(5%);opacity:1}}
+@keyframes fxWinBreathe{from{opacity:.72}to{opacity:1}}
+@keyframes fxMeteor{0%,72%{opacity:0;transform:translate(0,0) rotate(-28deg)}76%{opacity:.9}88%{opacity:0;transform:translate(360px,190px) rotate(-28deg)}100%{opacity:0}}
+@keyframes fxDay{from{transform:translateX(-2%)}to{transform:translateX(3%)}}
 @keyframes fxFloatA{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(7vw,6vh,0) scale(1.14)}}
 @keyframes fxFloatB{from{transform:translate3d(0,0,0) scale(1.08)}to{transform:translate3d(-8vw,9vh,0) scale(.94)}}
 @keyframes fxFloatC{from{transform:translate3d(-5vw,0,0) scale(1)}to{transform:translate3d(6vw,-7vh,0) scale(1.12)}}
@@ -825,6 +860,14 @@ html.lock{overflow:hidden}
 .seg button.on{background:var(--w2);border-color:var(--gold-line-2);color:var(--text);font-weight:650;box-shadow:0 2px 10px rgba(0,0,0,.16)}
 .seg .sw{display:block;width:100%;height:21px;border-radius:6px;box-shadow:inset 0 0 0 1px rgba(128,128,128,.18)}
 .seg button.on .sw{box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),0 2px 9px rgba(0,0,0,.2)}
+
+/* 「跟随系统」是模式开关，单独一行；下面 12 张卡正好 4 列 3 行 */
+.theme-mode{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.theme-mode button{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--inset);color:var(--dim);font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap}
+.theme-mode button.on{border-color:var(--gold-line-2);background:var(--w2);color:var(--text);font-weight:650}
+.theme-mode .sw{width:22px;height:16px;border-radius:4px;display:block;box-shadow:inset 0 0 0 1px rgba(128,128,128,.18)}
+.theme-mode em{font-style:normal;font-size:11px;color:var(--faint);line-height:1.4}
+.theme-story{margin:8px 2px 0;min-height:30px;padding:7px 10px;border-left:2px solid var(--gold-line);background:var(--gold-tint);border-radius:0 8px 8px 0;font-size:11.5px;line-height:1.5;color:var(--dim)}
 
 /* ---------- 彩色主题 ----------
    八套主题 = 一组语义变量（配色/边框/圆角/阴影）+ 一组场景开关。
@@ -887,7 +930,7 @@ html.lock{overflow:hidden}
   --fx-hill-a:#3b1408;--fx-hill-b:#1d0904;
 }
 :root[data-accent=sunset] .fx-sun{display:block}
-:root[data-accent=sunset] .fx-hills{display:block}
+:root[data-accent=sunset] .fx-dunes{display:block}
 :root[data-accent=sunset] .card,:root[data-accent=sunset] .stat{backdrop-filter:blur(6px)}
 :root[data-accent=sunset] .btn.primary{background:linear-gradient(135deg,#ffd8a8,#ff922b);color:#341a03}
 
@@ -1026,6 +1069,141 @@ html.lock{overflow:hidden}
 :root[data-accent=ink] .msg .acc{background:#4b6b52}
 :root[data-accent=ink] .badge[data-s=idle]{color:#5b4a58;background:rgba(108,90,114,.1);border-color:rgba(108,90,114,.24)}
 
+/* ---------- 默认两套场景（钥匙仍是 light / dark，行为与右上角切换不变） ---------- */
+/* 晨光素纸白：米白宣纸感、斜落窗格光影、暖金点缀 */
+:root[data-accent=light]{
+  --bg:#f4f1e9;--surface:#fffdf7;--inset:#efebe0;--raise:#e9e3d5;
+  --line:#e0d9c8;--line-soft:#ebe5d8;--line-hover:#c9bda3;--line-focus:#a99a7b;
+  --text:#24241f;--dim:#5f6055;--faint:#8d8b7c;--tag:#8d8b7c;
+  --gold:#a9762a;--gold-2:#8a5c18;--amber:#c58a3a;--mint:#0f9a62;--cyan:#0b7fa8;--violet:#6d4bd8;
+  --hero-grad-a:#6b4710;--mask:rgba(24,24,20,.4);--hero-glow:rgba(214,170,90,.09);
+  --gold-tint:rgba(169,118,42,.08);--gold-tint-2:rgba(169,118,42,.13);--gold-tint-3:rgba(169,118,42,.2);
+  --gold-line:rgba(169,118,42,.3);--gold-line-2:rgba(169,118,42,.42);
+  --card-line:rgba(160,145,115,.3);--card-radius:14px;
+  --card-bg-a:rgba(255,253,247,.9);--card-bg-b:rgba(250,246,236,.82);
+  --card-shadow:0 4px 16px rgba(120,100,60,.08),inset 0 1px 0 rgba(255,255,255,.8);
+  --fx1:rgba(255,222,160,.4);--fx2:rgba(214,170,90,.2);--fx3:rgba(255,240,205,.4);--fx-op:.28;--fx-grain:.05;
+  --fx-day:rgba(214,170,90,.12);
+}
+:root[data-accent=light] body{background:radial-gradient(900px 500px at 8% -12%,rgba(255,220,150,.22),transparent 62%),var(--bg)}
+:root[data-accent=light] .fx-daylight{display:block}
+:root[data-accent=light] .btn.primary{background:linear-gradient(135deg,#ffd27a,#f0a02e);color:#3a2402}
+
+/* 静夜砚墨黑：克制墨蓝、一点暖砚光，不加花哨场景 */
+:root[data-accent=dark]{
+  --bg:#080b11;--surface:#0e131c;--inset:#070a10;--raise:#161d28;
+  --line:#222c3a;--line-soft:#1b2430;--line-hover:#334155;
+  --text:#e9edf4;--dim:#8c97a8;--faint:#59647a;--tag:#677387;
+  --gold:#d9b26a;--gold-2:#f0d49a;--amber:#c98f4c;--mint:#4ade9f;--cyan:#4cc9f0;--violet:#a78bfa;
+  --hero-grad-a:#fff3d2;--mask:rgba(3,5,9,.74);--hero-glow:rgba(217,178,106,.09);
+  --gold-tint:rgba(217,178,106,.07);--gold-tint-2:rgba(217,178,106,.13);--gold-tint-3:rgba(217,178,106,.2);
+  --gold-line:rgba(217,178,106,.3);--gold-line-2:rgba(217,178,106,.42);
+  --card-line:rgba(120,140,170,.2);--card-radius:16px;
+  --card-bg-a:rgba(20,27,38,.82);--card-bg-b:rgba(11,15,23,.72);
+  --card-shadow:0 10px 30px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.03);
+  --fx1:rgba(217,178,106,.14);--fx2:rgba(80,110,160,.12);--fx3:rgba(160,120,70,.1);--fx-op:.3;--fx-grain:.03;
+  --fx-day:rgba(120,150,200,.06);
+}
+:root[data-accent=dark] .fx-daylight{display:block;opacity:.32}
+
+/* ---------- 新增两套季节场景 ---------- */
+/* 秋山枫叶红：暖杏底色，枫红为主、银杏金与新绿点缀，斜阳光束 + 风线 + 远山 */
+:root[data-accent=autumn]{
+  --bg:#fdf1e3;--surface:#fff8ee;--inset:#f7e6d2;--raise:#f2d9bd;
+  --line:#eac9a8;--line-soft:#f2ddc4;--line-hover:#d9a878;--line-focus:#c08c53;
+  --text:#3b2317;--dim:#8a6247;--faint:#b08c70;--tag:#a58265;
+  --gold:#c2401f;--gold-2:#9c2f15;--amber:#e08a1e;--mint:#4b7a3a;--cyan:#8a6a2a;--violet:#8e4b6d;
+  --hero-grad-a:#8f2710;--mask:rgba(45,22,12,.42);--hero-glow:rgba(224,138,30,.12);
+  --gold-tint:rgba(194,64,31,.08);--gold-tint-2:rgba(194,64,31,.13);--gold-tint-3:rgba(194,64,31,.2);
+  --gold-line:rgba(194,64,31,.3);--gold-line-2:rgba(194,64,31,.44);
+  --card-line:rgba(194,64,31,.26);--card-radius:16px;
+  --card-bg-a:rgba(255,252,244,.9);--card-bg-b:rgba(253,238,220,.78);
+  --card-shadow:0 10px 28px rgba(140,70,25,.12),inset 0 1px 0 rgba(255,255,255,.85);
+  --fx1:rgba(240,169,46,.34);--fx2:rgba(194,64,31,.22);--fx3:rgba(120,150,60,.16);--fx-op:.45;--fx-grain:.1;
+  --fx-ray:rgba(255,190,90,.16);--fx-wind:rgba(180,90,40,.14);--fx-hill-a:#d19a63;--fx-hill-b:#b4713d;
+}
+:root[data-accent=autumn] body{background:radial-gradient(900px 500px at 12% -12%,rgba(240,169,46,.2),transparent 62%),var(--bg)}
+:root[data-accent=autumn] .fx-rays{display:block}
+:root[data-accent=autumn] .fx-wind{display:block}
+:root[data-accent=autumn] .fx-hills{display:block;opacity:.55}
+:root[data-accent=autumn] .day.done{background:rgba(194,64,31,.13);border-color:rgba(194,64,31,.24);color:#a23518}
+:root[data-accent=autumn] .day.today{background:linear-gradient(135deg,#f0a92e,#c2401f);color:#fff;box-shadow:0 0 0 3px rgba(194,64,31,.18),0 4px 14px rgba(194,64,31,.26)}
+:root[data-accent=autumn] .day.today i{color:#fff2e2;opacity:.9}
+:root[data-accent=autumn] .btn.primary{background:linear-gradient(135deg,#f0a92e,#c2401f);color:#fff}
+
+/* 雪夜暖灯白：冷雪白为主，暖窗灯金与松枝青灰点缀，窗框光晕 + 雪堆 + 松枝 */
+:root[data-accent=snow]{
+  --bg:#e9f0f6;--surface:#f8fbfe;--inset:#dfe9f2;--raise:#d3e0ec;
+  --line:#c8d8e6;--line-soft:#dbe7f1;--line-hover:#a8bfd2;--line-focus:#88a5bd;
+  --text:#1d2b38;--dim:#597085;--faint:#879bad;--tag:#8298aa;
+  --gold:#b8792a;--gold-2:#8f5a18;--amber:#e0a13c;--mint:#3f8f8a;--cyan:#2b7fa8;--violet:#6b7fb5;
+  --hero-grad-a:#7b4a10;--mask:rgba(20,35,50,.42);--hero-glow:rgba(255,200,110,.12);
+  --gold-tint:rgba(184,121,42,.08);--gold-tint-2:rgba(184,121,42,.13);--gold-tint-3:rgba(184,121,42,.2);
+  --gold-line:rgba(184,121,42,.3);--gold-line-2:rgba(184,121,42,.44);
+  --card-line:rgba(255,255,255,.92);--card-radius:20px;
+  --card-bg-a:rgba(255,255,255,.82);--card-bg-b:rgba(240,247,253,.68);
+  --card-shadow:0 12px 32px rgba(40,70,100,.14),inset 0 1px 0 rgba(255,255,255,.95);
+  --fx1:rgba(255,206,130,.42);--fx2:rgba(150,190,220,.3);--fx3:rgba(255,255,255,.5);--fx-op:.5;--fx-grain:.08;
+  --fx-win:radial-gradient(circle at 50% 45%,rgba(255,208,120,.9),rgba(255,170,60,.38) 55%,transparent 78%);
+  --fx-win-glow:rgba(255,170,70,.4);--fx-frame:rgba(88,110,132,.55);--fx-ray:rgba(255,200,110,.1);
+}
+:root[data-accent=snow] body{background:radial-gradient(900px 520px at 80% 0%,rgba(255,205,130,.2),transparent 60%),radial-gradient(800px 500px at 10% 100%,rgba(150,190,220,.22),transparent 62%),var(--bg)}
+:root[data-accent=snow] .fx-window{display:block;opacity:.9}
+:root[data-accent=snow] .fx-rays{display:block}
+:root[data-accent=snow] .fx-snowdrift{display:block}
+:root[data-accent=snow] .fx-pine{display:block}
+:root[data-accent=snow] .card,:root[data-accent=snow] .stat{backdrop-filter:blur(10px)}
+:root[data-accent=snow] .day.today{background:linear-gradient(135deg,#ffe0a8,#e0a13c);color:#3a2402;box-shadow:0 0 0 3px rgba(224,161,60,.2),0 4px 14px rgba(224,161,60,.26)}
+:root[data-accent=snow] .btn.primary{background:linear-gradient(135deg,#ffd79a,#e0a13c);color:#3a2402}
+
+/* ---------- 各场景专属元素开关 ---------- */
+:root[data-accent=aurora] .fx-snowdrift{display:block;opacity:.12}
+:root[data-accent=sakura]{--fx-wind:rgba(226,110,160,.2)}
+:root[data-accent=sakura] .fx-branch{display:block}
+:root[data-accent=sakura] .fx-wind{display:block}
+:root[data-accent=sunset] .fx-birds{display:block}
+:root[data-accent=sunset]{--fx-hill-a:#7a2e10;--fx-hill-b:#3b1408}
+:root[data-accent=mint] .fx-haze{display:block}
+:root[data-accent=mint] .fx-rays{display:block}
+:root[data-accent=galaxy]{--fx-meteor:rgba(233,213,255,.9)}
+:root[data-accent=galaxy] .fx-meteor{display:block}
+:root[data-accent=ocean] .fx-jelly{display:block}
+:root[data-accent=ink]{--fx-rain:rgba(90,105,100,.4);--fx-rain-op:.2;--fx-haze:rgba(255,255,255,.5)}
+:root[data-accent=ink] .fx-rain{display:block}
+:root[data-accent=ink] .fx-boat{display:block}
+:root[data-accent=ink] .fx-haze{display:block}
+:root[data-accent=neon]{--fx-rain:rgba(120,220,240,.4);--fx-rain-op:.24}
+:root[data-accent=neon] .fx-rain{display:block}
+
+/* ---------- 每套主题的进度条与提示气泡 ----------
+   这两处原本写死了绿，暖色/粉色/东方主题里会串味；按场景各归各的色系。 */
+:root[data-accent=light]{--bar-a:#c79a4e;--bar-b:#dcb46a;--bar-c:#a9762a;--bar-glow:rgba(169,118,42,.22)}
+:root[data-accent=dark]{--bar-a:#8a6a2a;--bar-b:#d9b26a;--bar-c:#f0d49a;--bar-glow:rgba(217,178,106,.22)}
+:root[data-accent=aurora]{--bar-a:#0f9a8a;--bar-b:#5eead4;--bar-c:#7dd3fc;--bar-glow:rgba(94,234,212,.3)}
+:root[data-accent=sakura]{--bar-a:#e0447c;--bar-b:#f472b6;--bar-c:#c2255c;--bar-glow:rgba(244,114,182,.3)}
+:root[data-accent=sunset]{--bar-a:#f2602a;--bar-b:#ffb057;--bar-c:#ffd08a;--bar-glow:rgba(255,169,77,.3)}
+:root[data-accent=mint]{--bar-a:#059669;--bar-b:#34d399;--bar-c:#a7f3d0;--bar-glow:rgba(52,211,153,.28)}
+:root[data-accent=galaxy]{--bar-a:#7c3aed;--bar-b:#c4b5fd;--bar-c:#f0abfc;--bar-glow:rgba(167,139,250,.32)}
+:root[data-accent=ocean]{--bar-a:#0e7490;--bar-b:#22d3ee;--bar-c:#a5f3fc;--bar-glow:rgba(34,211,238,.3)}
+:root[data-accent=ink]{--bar-a:#4b6b52;--bar-b:#8c918a;--bar-c:#a5442f;--bar-glow:rgba(47,53,49,.18)}
+:root[data-accent=neon]{--bar-a:#a855f7;--bar-b:#ff5cb8;--bar-c:#22d3ee;--bar-glow:rgba(255,92,184,.34)}
+:root[data-accent=autumn]{--bar-a:#c2401f;--bar-b:#e08a1e;--bar-c:#f0a92e;--bar-glow:rgba(224,138,30,.3)}
+:root[data-accent=snow]{--bar-a:#7fa8c4;--bar-b:#e0a13c;--bar-c:#ffd79a;--bar-glow:rgba(224,161,60,.26)}
+:root[data-accent=light] .msg{background:rgba(169,118,42,.05);border-color:rgba(169,118,42,.16)}
+:root[data-accent=light] .msg .acc{background:#a9762a}
+:root[data-accent=dark] .msg{background:rgba(217,178,106,.05);border-color:rgba(217,178,106,.14)}
+:root[data-accent=dark] .msg .acc{background:#d9b26a}
+:root[data-accent=aurora] .msg{background:rgba(94,234,212,.055);border-color:rgba(94,234,212,.18)}
+:root[data-accent=aurora] .msg .acc{background:#5eead4}
+:root[data-accent=ocean] .msg{background:rgba(103,232,249,.055);border-color:rgba(103,232,249,.18)}
+:root[data-accent=ocean] .msg .acc{background:#67e8f9}
+:root[data-accent=neon] .msg{background:rgba(255,92,184,.06);border-color:rgba(255,92,184,.2)}
+:root[data-accent=neon] .msg .acc{background:#ff5cb8}
+:root[data-accent=autumn] .msg{background:rgba(194,64,31,.05);border-color:rgba(194,64,31,.16)}
+:root[data-accent=autumn] .msg .acc{background:#c2401f}
+:root[data-accent=snow] .msg{background:rgba(90,130,165,.06);border-color:rgba(90,130,165,.16)}
+:root[data-accent=snow] .msg .acc{background:#7fa8c4}
+
 /* ---------- 大屏模式 ----------
    桌面壳检测到窗口接近铺满主屏（最大化或拖得很大）时给 <html> 加 bigscreen。
    此时内容吃满窗口高度：卡片、日历格子自然长高，版心加宽，关键数字放大。
@@ -1055,23 +1233,25 @@ html.bigscreen .day i{font-size:10px}
    所以这里直接读 localStorage 的原始值，不经过 Guliqi.normalize（那时引擎还没加载）。
    彩色主题名单跟 engine.js 的 THEME_LIST 保持一致（这边要赶在引擎加载前用，只能各放一份）。 */
 (function () {
-  var BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light', ocean: 'dark', ink: 'light', neon: 'dark' };
+  var BASE = {
+    light: 'light', dark: 'dark',
+    aurora: 'dark', sunset: 'dark', galaxy: 'dark', ocean: 'dark', neon: 'dark',
+    sakura: 'light', mint: 'light', ink: 'light', autumn: 'light', snow: 'light'
+  };
   var mode = 'system';
   try {
     var s = localStorage.getItem('guliqi.cfg.v1');
     if (s) {
       var o = JSON.parse(s);
-      if (o && (o.theme === 'light' || o.theme === 'dark' || BASE[o.theme])) mode = o.theme;
+      if (o && BASE[o.theme]) mode = o.theme;
     }
   } catch (e) {}
-  var accent = BASE[mode] ? mode : '';
-  var dark = accent
-    ? BASE[accent] === 'dark'
-    : (mode === 'dark'
-      || (mode === 'system' && (!window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches)));
+  var sysDark = !window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var dark = BASE[mode] ? BASE[mode] === 'dark' : sysDark;
   var root = document.documentElement;
   root.setAttribute('data-theme', dark ? 'dark' : 'light');
-  if (accent) root.setAttribute('data-accent', accent);
+  // 「跟随系统」按解析出的明暗落到对应的默认场景；其余主题自己就是场景名
+  root.setAttribute('data-accent', BASE[mode] ? mode : (dark ? 'dark' : 'light'));
 })();
 </script>
 </head>
@@ -1126,11 +1306,54 @@ html.bigscreen .day i{font-size:10px}
       <path d="M0 660 C 180 585 260 630 380 545 C 470 480 540 555 630 610 C 760 690 860 585 1010 620 C 1160 655 1280 590 1440 645 L1440 900 L0 900 Z" fill="#1e2321" opacity=".075" filter="url(#fxSoft2)"></path>
       <path d="M0 760 C 220 700 400 805 620 735 C 850 665 1020 790 1240 730 C 1320 705 1380 715 1440 740 L1440 900 L0 900 Z" fill="#1e2321" opacity=".1" filter="url(#fxSoft)"></path>
     </g>
+    <g class="fx-branch">
+      <path d="M-30 30 C 120 60 210 120 310 140 C 400 158 450 130 500 88" fill="none" stroke="#6b4a3a" stroke-width="8" stroke-linecap="round" opacity=".5"></path>
+      <path d="M190 112 C 240 140 262 190 258 244" fill="none" stroke="#6b4a3a" stroke-width="5" stroke-linecap="round" opacity=".45"></path>
+      <path d="M330 142 C 370 175 385 215 380 258" fill="none" stroke="#6b4a3a" stroke-width="4" stroke-linecap="round" opacity=".4"></path>
+      <g fill="#f28ab0" opacity=".62">
+        <circle cx="90" cy="58" r="13"></circle><circle cx="152" cy="88" r="10"></circle>
+        <circle cx="258" cy="238" r="12"></circle><circle cx="238" cy="188" r="8"></circle>
+        <circle cx="380" cy="252" r="11"></circle><circle cx="404" cy="132" r="9"></circle>
+        <circle cx="470" cy="108" r="12"></circle><circle cx="312" cy="132" r="9"></circle>
+      </g>
+    </g>
+    <g class="fx-birds" fill="none" stroke="#4a1c0c" stroke-width="3" stroke-linecap="round" opacity=".55">
+      <path d="M900 250 q 14 -12 28 0 q 14 -12 28 0"></path>
+      <path d="M980 210 q 11 -9 22 0 q 11 -9 22 0"></path>
+      <path d="M1050 275 q 9 -8 18 0 q 9 -8 18 0"></path>
+    </g>
+    <g class="fx-jelly" opacity=".3">
+      <path d="M250 470 C 250 420 350 420 350 470 C 350 490 330 500 300 500 C 270 500 250 490 250 470 Z" fill="#a5f3fc"></path>
+      <path d="M262 492 q -8 40 4 74 M282 498 q -6 48 2 82 M300 500 q 4 48 -2 86 M318 498 q 8 44 0 80 M338 490 q 10 38 0 70" fill="none" stroke="#a5f3fc" stroke-width="3" stroke-linecap="round"></path>
+      <path d="M1080 590 C 1080 550 1160 550 1160 590 C 1160 606 1144 614 1120 614 C 1096 614 1080 606 1080 590 Z" fill="#67e8f9"></path>
+      <path d="M1090 608 q -6 32 3 60 M1106 613 q -4 38 1 66 M1120 615 q 3 38 -1 70 M1134 612 q 6 34 0 62 M1150 606 q 8 30 0 54" fill="none" stroke="#67e8f9" stroke-width="2.5" stroke-linecap="round"></path>
+    </g>
+    <g class="fx-boat" opacity=".45">
+      <path d="M980 700 q 60 26 140 0 l -18 22 q -52 14 -104 0 Z" fill="#2b302c"></path>
+      <path d="M1020 700 q 0 -30 30 -30 q 30 0 30 30 Z" fill="#2b302c"></path>
+      <path d="M1050 670 l 0 30" stroke="#2b302c" stroke-width="3"></path>
+    </g>
+    <g class="fx-pine" fill="none" stroke="#3d5a52" stroke-width="5" stroke-linecap="round" opacity=".4">
+      <path d="M-20 900 C 120 820 190 700 230 560"></path>
+      <path d="M90 812 q -60 -20 -80 -60 M130 760 q 60 -30 76 -76 M170 700 q -66 -22 -90 -66 M205 626 q 60 -34 74 -86"></path>
+      <path d="M1400 900 C 1300 840 1260 740 1240 640"></path>
+      <path d="M1310 830 q 54 -24 72 -66 M1270 762 q -54 -24 -72 -66 M1248 688 q 52 -30 66 -76"></path>
+    </g>
+    <g class="fx-dunes">
+      <path d="M0 700 C 200 620 340 720 520 660 C 700 600 820 700 1000 640 C 1180 580 1320 680 1440 640 L1440 900 L0 900 Z"></path>
+      <path d="M0 780 C 220 720 400 810 640 760 C 880 710 1080 800 1280 750 C 1360 730 1400 745 1440 760 L1440 900 L0 900 Z"></path>
+    </g>
+    <g class="fx-snowdrift">
+      <path d="M0 810 C 240 760 420 840 700 800 C 980 760 1200 840 1440 795 L1440 900 L0 900 Z" fill="#ffffff" opacity=".55"></path>
+    </g>
   </svg>
   <div class="fx-sun"></div>
   <div class="fx-ring"></div>
   <div class="fx-grid"></div>
   <div class="fx-beams"></div>
+  <div class="fx-wind"></div><div class="fx-rays"></div><div class="fx-rain"></div>
+  <div class="fx-haze"></div><div class="fx-window"></div><div class="fx-meteor"></div>
+  <div class="fx-daylight"></div>
   <div class="fx-glow ga"></div><div class="fx-glow gb"></div><div class="fx-glow gc"></div>
   <div class="fx-grain"></div><div class="fx-scan"></div>
 </div>
@@ -1276,7 +1499,7 @@ html.bigscreen .day i{font-size:10px}
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.15</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.16</button>
     </div>
   </footer>
 </div>
@@ -1404,20 +1627,13 @@ html.bigscreen .day i{font-size:10px}
     <div class="tab-pane" data-pane="look">
     <div class="field adv-field">
       <label>界面主题</label>
-      <div class="seg" id="fTheme" role="group" aria-label="界面主题">
+      <div class="theme-mode" id="themeMode" role="group" aria-label="跟随系统">
         <button type="button" data-theme-opt="system"><i class="sw" style="background:linear-gradient(100deg,#202632 0 50%,#eef1f5 50% 100%)"></i><span>跟随系统</span></button>
-        <button type="button" data-theme-opt="light"><i class="sw" style="background:linear-gradient(135deg,#ffffff,#f0f3f7 60%,#ffd27a)"></i><span>浅色</span></button>
-        <button type="button" data-theme-opt="dark"><i class="sw" style="background:linear-gradient(135deg,#0d1219,#1c2532 60%,#ffc857)"></i><span>深色</span></button>
-        <button type="button" data-theme-opt="aurora"><i class="sw" style="background:linear-gradient(115deg,#041b22,#2dd4bf 45%,#a78bfa 78%,#0a1030)"></i><span>极光夜</span></button>
-        <button type="button" data-theme-opt="sakura"><i class="sw" style="background:linear-gradient(115deg,#fdf4f6,#ffb3c9 48%,#f472b6 80%,#c8507f)"></i><span>樱花粉</span></button>
-        <button type="button" data-theme-opt="sunset"><i class="sw" style="background:linear-gradient(115deg,#2a1005,#ff922b 48%,#ff6b6b 78%,#4a1608)"></i><span>落日橙</span></button>
-        <button type="button" data-theme-opt="mint"><i class="sw" style="background:linear-gradient(115deg,#f2faf5,#a7f3d0 45%,#10b981 85%)"></i><span>薄荷绿</span></button>
-        <button type="button" data-theme-opt="galaxy"><i class="sw" style="background:linear-gradient(115deg,#0a0616,#7c3aed 45%,#f0abfc 82%,#1a1040)"></i><span>星河紫</span></button>
-        <button type="button" data-theme-opt="ocean"><i class="sw" style="background:linear-gradient(115deg,#03121f,#0e7490 45%,#22d3ee 82%,#04263a)"></i><span>深海蓝</span></button>
-        <button type="button" data-theme-opt="ink"><i class="sw" style="background:linear-gradient(115deg,#f7f4ec,#d9d2c2 45%,#3b403c 80%,#b7412f)"></i><span>水墨</span></button>
-        <button type="button" data-theme-opt="neon"><i class="sw" style="background:linear-gradient(115deg,#0b0618,#ff3ea5 45%,#22d3ee 82%,#160a2e)"></i><span>霓虹夜</span></button>
+        <em>按 Windows 明暗自动切换下面两套默认场景</em>
       </div>
-      <div class="hint">每套主题都有独立配色、边框和背景动效。点一下立刻预览，点保存才记住；右上角快捷按钮仍只切深浅。</div>
+      <div class="seg" id="fTheme" role="group" aria-label="场景主题"></div>
+      <div class="theme-story" id="themeStory"></div>
+      <div class="hint">每套主题都是「场景 + 意向 + 色彩」：主色约七成，点缀约三成，配专属背景动效。点一下立刻预览，点保存才记住；右上角快捷按钮仍只切两套默认主题。</div>
     </div>
 
     <div class="field adv-field">
@@ -1647,18 +1863,65 @@ var Guliqi = (function () {
       { name: '一次旅行', price: 10000 }
     ],
     display: { hide_money: false },
-    theme: 'system',   // 见 THEME_LIST：三个默认值 + 五个彩色主题
+    theme: 'system',   // 见 THEME_META：一个模式 + 十二套场景主题
     demo: false,
     demo_offset: 0     // 演示时钟相对真实时间的偏移（毫秒），0 = 不偏移
   };
 
-  // 彩色主题清单（8 套）：极光夜 / 樱花粉 / 落日橙 / 薄荷绿 / 星河紫 / 深海蓝 / 水墨 / 霓虹夜。
-  // 随返回对象导出，head 防闪脚本、ui.js、store.py 的名单都要与这里同步。
-  var THEME_LIST = {
-    system: 1, light: 1, dark: 1,
-    aurora: 1, sakura: 1, sunset: 1, mint: 1, galaxy: 1,
-    ocean: 1, ink: 1, neon: 1
+  /* ---------- 主题元数据（唯一真源） ----------
+     命名统一「场景 + 意向 + 色彩」：前两字是场景、再两字是意向、末字是主色。
+     base 只决定深/浅底；meta 是标题栏颜色；sw 是设置里预览卡的渐变；
+     scene 是选中后显示的一句话；mode=true 表示它是「跟随系统」这个模式开关，
+     不对应具体场景。对象顺序 = 设置面板里的显示顺序。
+     内部 key 一律不改名：数据库、localStorage、防闪脚本都按 key 存，
+     这样升级后已选主题不会丢，也不需要写迁移。 */
+  var THEME_META = {
+    system:  { name: '跟随系统', mode: true, base: 'system', meta: '#07090d',
+               sw: 'linear-gradient(100deg,#202632 0 50%,#eef1f5 50% 100%)',
+               scene: '按 Windows 的明暗设置，自动使用下面两套默认场景。' },
+    light:   { name: '晨光素纸白', base: 'light', meta: '#f4f1e9',
+               sw: 'linear-gradient(115deg,#f7f4ec,#fffdf6 45%,#f4d9a8 88%)',
+               scene: '清晨窗边，日光斜落在素纸上，窗格影子缓缓移动。' },
+    dark:    { name: '静夜砚墨黑', base: 'dark', meta: '#080b11',
+               sw: 'linear-gradient(115deg,#080b11,#1a2130 55%,#c9a86a 92%)',
+               scene: '夜阑人静，砚墨般的底色里留一点暖灯微光。' },
+    aurora:  { name: '极夜流光青', base: 'dark', meta: '#04121a',
+               sw: 'linear-gradient(115deg,#04121a,#2dd4bf 45%,#a78bfa 78%,#0a1030)',
+               scene: '北极圈的雪原极夜，极光帘幕起伏，冰晶缓缓升起。' },
+    sakura:  { name: '春日樱花粉', base: 'light', meta: '#fff5f7',
+               sw: 'linear-gradient(115deg,#fff5f7,#ffb3c9 48%,#f472b6 82%,#8dbf7a)',
+               scene: '春日午后庭院，微风卷起大小不一的樱瓣，新芽刚绿。' },
+    sunset:  { name: '黄昏鎏金橙', base: 'dark', meta: '#1a0a06',
+               sw: 'linear-gradient(115deg,#2a1005,#ff922b 48%,#ff6b6b 78%,#4a1608)',
+               scene: '海岸黄昏，落日沉向双层远山，归鸟掠过鎏金云霞。' },
+    mint:    { name: '清晨薄荷绿', base: 'light', meta: '#eefaf4',
+               sw: 'linear-gradient(115deg,#eefaf4,#a7f3d0 45%,#10b981 85%)',
+               scene: '清晨温室露台，露珠沿薄荷叶脉滑落，晨雾慢慢流动。' },
+    galaxy:  { name: '深空星河紫', base: 'dark', meta: '#080515',
+               sw: 'linear-gradient(115deg,#080515,#7c3aed 45%,#f0abfc 82%,#1a1040)',
+               scene: '深夜高原，银河与星座明灭，偶有流星划过星环。' },
+    ocean:   { name: '深海光束蓝', base: 'dark', meta: '#03121f',
+               sw: 'linear-gradient(115deg,#03121f,#0e7490 45%,#22d3ee 82%,#04263a)',
+               scene: '深海水下，光束随水面摆动，半透明水母静静浮沉。' },
+    ink:     { name: '江南烟雨白', base: 'light', meta: '#f7f4ec',
+               sw: 'linear-gradient(115deg,#f7f4ec,#d9d2c2 45%,#3b403c 80%,#b7412f)',
+               scene: '江南烟雨，远山晕成淡墨，细雨里一叶乌篷船。' },
+    neon:    { name: '雨夜霓虹粉', base: 'dark', meta: '#090317',
+               sw: 'linear-gradient(115deg,#090317,#ff3ea5 45%,#22d3ee 82%,#160a2e)',
+               scene: '赛博雨夜，霓虹倒影拉长在湿地上，雨丝斜落。' },
+    autumn:  { name: '秋山枫叶红', base: 'light', meta: '#fdf1e3',
+               sw: 'linear-gradient(115deg,#fdf1e3,#e8593f 42%,#f0a92e 78%,#7a3b1d)',
+               scene: '秋日山径，枫叶与银杏旋转飘落，斜阳穿过林间。' },
+    snow:    { name: '雪夜暖灯白', base: 'light', meta: '#edf3f8',
+               sw: 'linear-gradient(115deg,#e8f0f7,#ffffff 45%,#ffd79a 82%,#8fa9bf)',
+               scene: '雪夜窗边，三层雪花缓缓落下，窗内暖灯轻轻呼吸。' }
   };
+
+  // 名单由元数据派生，别再维护第二份；normalize 和界面都读它
+  var THEME_LIST = {};
+  for (var _tk in THEME_META) {
+    if (Object.prototype.hasOwnProperty.call(THEME_META, _tk)) THEME_LIST[_tk] = 1;
+  }
 
   /* ---------- 小工具 ---------- */
   function p2(n) { return String(n).padStart(2, '0'); }
@@ -2159,6 +2422,7 @@ var Guliqi = (function () {
     DEFAULT_CFG: DEFAULT_CFG,
     STORE_KEY: STORE_KEY,
     THEME_LIST: THEME_LIST,
+    THEME_META: THEME_META,
     normalize: normalize,
     loadCfg: loadCfg,
     saveCfg: saveCfg,
@@ -2328,43 +2592,28 @@ var Lunar = (function () {
   var titleTick = 0;
 
   /* ---------- 主题 ----------
-     三个默认模式：system（跟随系统）/ light / dark，外加八套彩色主题：
-     aurora 极光夜 / sakura 樱花粉 / sunset 落日橙 / mint 薄荷绿 /
-     galaxy 星河紫 / ocean 深海蓝 / ink 水墨 / neon 霓虹夜。
-     名单以 engine.js 的 G.THEME_LIST 为准。
-     彩色主题 = 底色（深或浅）+ data-accent 挂的配色、卡片质感与背景场景层。
-     head 里那段内联脚本已经在首帧之前画过一次，这里只负责之后的变化。 */
+     一个模式（system）+ 十二套「场景 + 意向 + 色彩」主题。
+     名称、场景文案、预览渐变、明暗基底全在 engine.js 的 G.THEME_META，这里不再抄名单。
+     data-theme 只表深/浅底，data-accent 指向具体场景；「跟随系统」按当前明暗
+     落到 light / dark 两套默认场景。head 里的内联脚本已在首帧之前画过一次。 */
   var themeMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   var draftTheme = cfg.theme;      // 面板里点中但还没保存的值
-  // 彩色主题名 → 底色（决定 data-theme 是深是浅，CSS 变量覆盖挂在 data-accent 上）
-  var THEME_BASE = {
-    aurora: 'dark', sunset: 'dark', galaxy: 'dark', ocean: 'dark', neon: 'dark',
-    sakura: 'light', mint: 'light', ink: 'light'
-  };
-  // 彩色主题的标题栏/任务栏颜色，跟各自 --bg 对应
-  var ACCENT_META = {
-    aurora: '#04121a', sunset: '#1a0a06', galaxy: '#080515',
-    sakura: '#fff5f7', mint: '#eefaf4',
-    ocean: '#03121f', ink: '#f7f4ec', neon: '#090317'
-  };
+  var TM = G.THEME_META;
 
   function sysIsDark() {
     return !!(themeMQ && themeMQ.matches);
   }
 
   function applyTheme(mode) {
-    var m = G.THEME_LIST[mode] ? mode : 'system';
-    var accent = THEME_BASE[m] ? m : '';
-    var dark = accent
-      ? THEME_BASE[m] === 'dark'
-      : (m === 'dark') || (m === 'system' && sysIsDark());
+    var m = TM[mode] ? mode : 'system';
+    var dark = (m === 'system') ? sysIsDark() : TM[m].base === 'dark';
+    var accent = (m === 'system') ? (dark ? 'dark' : 'light') : m;
     var root = document.documentElement;
     root.setAttribute('data-theme', dark ? 'dark' : 'light');
-    if (accent) root.setAttribute('data-accent', accent);
-    else root.removeAttribute('data-accent');
+    root.setAttribute('data-accent', accent);
     // 手机/独立窗口的标题栏、任务栏跳转列表都读这个
     var meta = document.querySelector('meta[name=theme-color]');
-    if (meta) meta.setAttribute('content', accent ? ACCENT_META[accent] : (dark ? '#07090d' : '#f5f6f8'));
+    if (meta) meta.setAttribute('content', TM[accent].meta);
     root.style.colorScheme = dark ? 'dark' : 'light';
     paintThemeBtn(dark);
   }
@@ -2373,15 +2622,30 @@ var Lunar = (function () {
   function paintThemeBtn(dark) {
     var b = $('btnTheme');
     if (!b) return;
-    var tip = dark ? '切换到浅色主题' : '切换到深色主题';
+    var tip = dark ? '切换到晨光素纸白' : '切换到静夜砚墨黑';
     b.setAttribute('title', tip);
     b.setAttribute('aria-label', tip);
   }
 
-  function paintThemeSeg() {
+  /* 设置面板的 12 张预览卡由元数据生成；「跟随系统」是独立一行的模式开关。
+     新增主题只要改 engine.js 的 THEME_META，这里和回归用例都自动跟上。 */
+  function buildThemePicker() {
     var box = $('fTheme');
     if (!box) return;
-    var btns = box.querySelectorAll('button');
+    var html = '', keys = Object.keys(TM);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i], m = TM[k];
+      if (m.mode) continue;
+      html += '<button type="button" data-theme-opt="' + k + '">'
+        + '<i class="sw" style="background:' + m.sw + '"></i>'
+        + '<span>' + m.name + '</span></button>';
+    }
+    box.innerHTML = html;
+  }
+  buildThemePicker();
+
+  function paintThemeSeg() {
+    var btns = document.querySelectorAll('#fTheme button, #themeMode button');
     for (var i = 0; i < btns.length; i++) {
       var on = btns[i].getAttribute('data-theme-opt') === draftTheme;
       btns[i].classList.toggle('on', on);
@@ -2389,9 +2653,20 @@ var Lunar = (function () {
     }
   }
 
-  // 系统明暗变化：只有"跟随系统"时才跟着动；用户明确选了浅/深就保持不变
+  // 选中哪套，就把它的场景意向讲清楚；跟随系统则说明此刻实际落在哪套
+  function paintThemeStory() {
+    var el = $('themeStory');
+    if (!el) return;
+    var m = TM[draftTheme] || TM.system;
+    var key = m.mode ? (sysIsDark() ? 'dark' : 'light') : draftTheme;
+    el.textContent = m.mode
+      ? '当前系统会用「' + TM[key].name + '」：' + TM[key].scene
+      : TM[key].name + ' · ' + TM[key].scene;
+  }
+
+  // 系统明暗变化：只有"跟随系统"时才跟着动；用户明确选了某套就保持不变
   function onSysThemeChange() {
-    if (cfg.theme === 'system') applyTheme('system');
+    if (cfg.theme === 'system') { applyTheme('system'); paintThemeStory(); }
   }
   if (themeMQ) {
     if (themeMQ.addEventListener) themeMQ.addEventListener('change', onSysThemeChange);
@@ -3101,6 +3376,7 @@ var Lunar = (function () {
     $('fDemo').checked = !!cfg.demo;
     draftTheme = cfg.theme;
     paintThemeSeg();
+    paintThemeStory();
     $('fDemoTime').value = (cfg.demo && cfg.demo_offset) ? hhmmOf(minOfDate(nowAt())) : '';
     renderDemoChips();
     syncDemoUI(false);
@@ -3117,6 +3393,7 @@ var Lunar = (function () {
     if (firstRun) return;        // 首次设置不许跳过
     // 面板里试过的主题没保存，关掉就退回已保存的那个
     if (draftTheme !== cfg.theme) { draftTheme = cfg.theme; applyTheme(cfg.theme); }
+    paintThemeStory();
     sheet.classList.remove('open');
     syncLock();
   }
@@ -3136,6 +3413,7 @@ var Lunar = (function () {
     desk.send('save_cfg', cfg);
     applyTheme(next);
     paintThemeSeg();
+    paintThemeStory();
   });
   $('mask').addEventListener('click', closeSheet);
   $('btnCancel').addEventListener('click', closeSheet);
@@ -3156,16 +3434,19 @@ var Lunar = (function () {
   });
 
   // 主题：点了立刻预览，保存才落盘（跟面板里其他项的手感一致）
-  $('fTheme').addEventListener('click', function (e) {
+  function onThemePick(e) {
     var b = e.target && e.target.closest ? e.target.closest('button') : null;
     if (!b) return;
     var v = b.getAttribute('data-theme-opt');
     if (!v) return;
-    // 名单跟 engine.js 的 THEME_LIST 走；别再写死浅/深两选一，否则彩色主题点了会被吞掉
-    draftTheme = G.THEME_LIST[v] ? v : 'system';
+    // 名单跟 engine.js 的 THEME_META 走；别再写死浅/深两选一，否则彩色主题点了会被吞掉
+    draftTheme = TM[v] ? v : 'system';
     applyTheme(draftTheme);
     paintThemeSeg();
-  });
+    paintThemeStory();
+  }
+  $('fTheme').addEventListener('click', onThemePick);
+  $('themeMode').addEventListener('click', onThemePick);
 
   weekBtns.forEach(function (b) {
     b.addEventListener('click', function () {
@@ -3273,6 +3554,7 @@ var Lunar = (function () {
     G.markReady();
     desk.send('save_cfg', cfg);
     applyTheme(cfg.theme);   // 已保存值可能和预览值相同，重放一次不会有副作用
+    paintThemeStory();
     saveDeskOpts();          // 开机启动 / 检查更新交由桌面层落到系统里
     firstRun = false;
     panel.classList.remove('setup');
@@ -3309,6 +3591,7 @@ var Lunar = (function () {
     // 配置清空 = 主题也回到默认，别让界面停在用户刚选的浅/深色上
     draftTheme = cfg.theme;
     applyTheme(cfg.theme);
+    paintThemeStory();
     refs.hideTxt.textContent = '隐藏金额';
     openSheet(true);          // 重设 = 再走一次首次引导
   });
@@ -3669,35 +3952,40 @@ var Lunar = (function () {
     var W = 0, H = 0;
     var N = 46, ps = [];
 
-    // 默认深/浅色的粒子配色（无彩色主题时按 data-theme 二选一）
-    var COLORS_DARK = ['255,200,87', '78,205,196', '255,236,170'];
-    var COLORS_LIGHT = ['176,132,32', '70,150,146', '120,130,160'];
-
-    /* 八套彩色主题各有粒子配方：颜色、浓度、漂移方向、大小，还有形状。
-       vy 区间：负数上浮、正数下落（樱花瓣往下飘）。
-       shape：dot 圆点 / petal 旋转花瓣 / bubble 空心气泡 / star 四角星芒 / spark 竖直火星。 */
+    /* 十二套场景各有粒子配方。vy 负上浮、正下落；shape 见 drawParticle。
+       depth 用近/中/远三层：大小、速度、透明度、摆动幅度都不同，
+       于是「大小不一、缓慢飘落」才有纵深；gust:[周期ms,强度] 是整片粒子
+       被阵风一起吹偏；sway 是单体左右摆动；lift 是落到底被风重新卷起的概率。 */
     var FX_PRESETS = {
-      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.14, vy: [-0.10, -0.03], vx: 0.05, r: [1.0, 2.6], shape: 'dot' },
-      sakura: { colors: ['244,114,182', '251,146,160', '255,190,212'], alpha: 0.34, vy: [0.06, 0.20], vx: 0.16, r: [1.6, 3.2], shape: 'petal' },
-      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.18, vy: [-0.18, -0.05], vx: 0.09, r: [0.9, 2.2], shape: 'spark' },
-      mint:   { colors: ['16,185,129', '52,211,153', '255,255,255'], alpha: 0.18, vy: [-0.16, -0.05], vx: 0.08, r: [1.2, 3.0], shape: 'bubble' },
+      light:  { colors: ['176,132,32', '200,165,90', '120,130,160'], alpha: 0.09, vy: [-0.16, -0.04], vx: 0.08, r: [0.7, 2.2], shape: 'dot' },
+      dark:   { colors: ['255,200,87', '78,205,196', '255,236,170'], alpha: 0.15, vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6], shape: 'dot' },
+      aurora: { colors: ['94,234,212', '167,139,250', '110,231,183'], alpha: 0.14, vy: [-0.10, -0.03], vx: 0.05, r: [1.0, 2.6], shape: 'dot', sway: 0.8 },
+      sakura: { colors: ['244,114,182', '251,146,160', '255,190,212', '141,191,122'], alpha: 0.36, vy: [0.05, 0.16], vx: 0.10, r: [1.8, 3.4], shape: 'petal', gust: [8200, 0.62], sway: 2.4, lift: 0.36 },
+      sunset: { colors: ['255,163,77', '255,120,113', '253,224,71'], alpha: 0.18, vy: [-0.18, -0.05], vx: 0.09, r: [0.9, 2.2], shape: 'spark', sway: 0.7 },
+      mint:   { colors: ['16,185,129', '52,211,153', '255,255,255'], alpha: 0.17, vy: [-0.16, -0.05], vx: 0.07, r: [1.2, 3.0], shape: 'bubble', sway: 0.9 },
       galaxy: { colors: ['221,214,254', '165,180,252', '240,171,252'], alpha: 0.16, vy: [-0.02, 0.02], vx: 0.03, r: [0.7, 1.8], shape: 'star' },
-      ocean:  { colors: ['165,243,252', '34,211,238', '103,232,249'], alpha: 0.17, vy: [-0.14, -0.04], vx: 0.06, r: [1.2, 3.0], shape: 'bubble' },
-      ink:    { colors: ['60,66,61', '120,124,116', '183,65,47'], alpha: 0.10, vy: [-0.03, 0.01], vx: 0.02, r: [0.6, 2.0], shape: 'dot' },
-      neon:   { colors: ['255,92,184', '34,211,238', '168,85,247'], alpha: 0.16, vy: [-0.06, 0.02], vx: 0.04, r: [0.7, 1.9], shape: 'star' }
+      ocean:  { colors: ['165,243,252', '34,211,238', '103,232,249'], alpha: 0.17, vy: [-0.14, -0.04], vx: 0.06, r: [1.2, 3.0], shape: 'bubble', sway: 1.1 },
+      ink:    { colors: ['60,66,61', '120,124,116', '183,65,47'], alpha: 0.10, vy: [0.05, 0.14], vx: 0.03, r: [0.6, 1.6], shape: 'dot', sway: 0.4 },
+      neon:   { colors: ['255,92,184', '34,211,238', '168,85,247'], alpha: 0.16, vy: [0.04, 0.12], vx: 0.04, r: [0.7, 1.9], shape: 'star', sway: 0.5 },
+      autumn: { colors: ['194,64,31', '224,138,30', '240,169,46', '75,122,58'], alpha: 0.38, vy: [0.05, 0.15], vx: 0.12, r: [2.0, 3.8], shape: 'leaf', gust: [9200, 0.72], sway: 2.8, lift: 0.32 },
+      snow:   { colors: ['255,255,255', '200,225,240', '255,225,170'], alpha: 0.56, vy: [0.03, 0.11], vx: 0.05, r: [1.4, 3.2], shape: 'flake', gust: [14000, 0.32], sway: 1.6 }
     };
 
     function fxConf() {
       var a = document.documentElement.getAttribute('data-accent');
       if (a && FX_PRESETS[a]) return FX_PRESETS[a];
-      var light = document.documentElement.getAttribute('data-theme') === 'light';
-      return {
-        colors: light ? COLORS_LIGHT : COLORS_DARK,
-        alpha: light ? 0.10 : 0.16,
-        vy: [-0.18, -0.04], vx: 0.10, r: [0.7, 2.6], shape: 'dot'
-      };
+      return document.documentElement.getAttribute('data-theme') === 'light'
+        ? FX_PRESETS.light : FX_PRESETS.dark;
     }
     function rand(a, b) { return a + Math.random() * (b - a); }
+
+    // 近 12 / 中 16 / 远 18，共 46 个粒子；总数不增，只是分层给人纵深感
+    var LAYER = [
+      { r: 1.9, a: 1.25, v: 1.35, s: 1.5 },
+      { r: 1.0, a: 1.00, v: 1.00, s: 1.0 },
+      { r: 0.55, a: 0.60, v: 0.65, s: 0.55 }
+    ];
+    function layerOf(i) { return i < 12 ? 0 : (i < 28 ? 1 : 2); }
 
     // 主题切换后粒子还在按旧配方跑，靠 key 比对发现变了就整批重撒
     var fxKey = '';
@@ -3706,17 +3994,22 @@ var Lunar = (function () {
       return (root.getAttribute('data-accent') || '') + '|' + (root.getAttribute('data-theme') || '');
     }
 
-    function spawn(w, h) {
-      var c = fxConf();
+    function spawn(w, h, layer) {
+      var c = fxConf(), L = LAYER[layer];
+      var vy = rand(c.vy[0], c.vy[1]) * L.v;
       return {
         x: Math.random() * w, y: Math.random() * h,
-        r: rand(c.r[0], c.r[1]),                                       // 半径（CSS px）
+        r: rand(c.r[0], c.r[1]) * L.r,                                 // 半径（CSS px）
+        layer: layer,
         vx: (Math.random() - 0.5) * 2 * c.vx,                          // 水平漂移
-        vy: rand(c.vy[0], c.vy[1]),                                    // 上浮或下落
+        vy: vy, baseVy: vy,                                            // 上浮/下落，baseVy 供二次扬起后复位
         tw: 0.4 + Math.random() * 0.9,                                 // 闪烁速度
         ph: Math.random() * Math.PI * 2,                               // 闪烁相位
-        rot: Math.random() * Math.PI * 2,                              // 花瓣/星芒朝向
-        rotV: (Math.random() - 0.5) * 0.012,                           // 自转速度
+        rot: Math.random() * Math.PI * 2,                              // 花瓣/叶片朝向
+        rotV: (Math.random() - 0.5) * 0.014,                           // 自转速度
+        sway: (c.sway || 0) * L.s,                                     // 左右摆动幅度
+        swaySpeed: 0.6 + Math.random() * 0.8,
+        lift: false,                                                   // 是否正被风重新卷起
         c: Math.floor(Math.random() * c.colors.length)
       };
     }
@@ -3731,6 +4024,24 @@ var Lunar = (function () {
         ctx.translate(p.x, p.y); ctx.rotate(p.rot);
         ctx.beginPath(); ctx.ellipse(0, 0, p.r * 1.7, p.r * 0.68, 0, 0, 6.2832);
         ctx.fill(); ctx.restore();
+      } else if (shape === 'leaf') {
+        ctx.save();
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.beginPath(); ctx.ellipse(0, 0, p.r * 1.5, p.r * 0.72, 0, 0, 6.2832); ctx.fill();
+        ctx.lineWidth = 0.6;
+        ctx.strokeStyle = 'rgba(' + rgb + ',' + (a * 0.55).toFixed(3) + ')';
+        ctx.beginPath(); ctx.moveTo(-p.r * 1.4, 0); ctx.lineTo(p.r * 1.4, 0); ctx.stroke();
+        ctx.restore();
+      } else if (shape === 'flake') {
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        for (var k = 0; k < 3; k++) {
+          var ang = k * Math.PI / 3, R = p.r * 1.8;
+          ctx.moveTo(p.x - Math.cos(ang) * R, p.y - Math.sin(ang) * R);
+          ctx.lineTo(p.x + Math.cos(ang) * R, p.y + Math.sin(ang) * R);
+        }
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.5, 0, 6.2832); ctx.fill();
       } else if (shape === 'spark') {
         ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 0.6, p.r * 1.9, 0, 0, 6.2832); ctx.fill();
       } else if (shape === 'bubble') {
@@ -3739,11 +4050,11 @@ var Lunar = (function () {
         ctx.fillStyle = 'rgba(' + rgb + ',' + (a * 0.22).toFixed(3) + ')';
         ctx.fill();
       } else if (shape === 'star') {
-        var R = p.r * 2.3;
+        var R2 = p.r * 2.3;
         ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.moveTo(p.x - R, p.y); ctx.lineTo(p.x + R, p.y);
-        ctx.moveTo(p.x, p.y - R); ctx.lineTo(p.x, p.y + R);
+        ctx.moveTo(p.x - R2, p.y); ctx.lineTo(p.x + R2, p.y);
+        ctx.moveTo(p.x, p.y - R2); ctx.lineTo(p.x, p.y + R2);
         ctx.stroke();
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.55, 0, 6.2832); ctx.fill();
       } else {
@@ -3763,7 +4074,7 @@ var Lunar = (function () {
     }
 
     resize();
-    for (var i = 0; i < N; i++) ps.push(spawn(W, H));
+    for (var i = 0; i < N; i++) ps.push(spawn(W, H, layerOf(i)));
 
     var running = false, rafId = 0;
     function frame(t) {
@@ -3771,19 +4082,36 @@ var Lunar = (function () {
       var sig = fxSignature();
       if (sig !== fxKey) {
         fxKey = sig;
-        for (var s = 0; s < N; s++) ps[s] = spawn(W, H);
+        for (var s = 0; s < N; s++) ps[s] = spawn(W, H, layerOf(s));
       }
       var conf = fxConf();
+      // 阵风：整片粒子被同一个正弦波推着走，近层吹得更明显
+      var gust = conf.gust ? conf.gust[1] * Math.sin(t * 6.2832 / conf.gust[0]) : 0;
       ctx.clearRect(0, 0, W, H);
       for (var i = 0; i < N; i++) {
         var p = ps[i];
-        p.x += p.vx; p.y += p.vy; p.rot += p.rotV;
-        if (p.y < -6) { p.y = H + 6; p.x = Math.random() * W; }
-        else if (p.y > H + 6) { p.y = -6; p.x = Math.random() * W; }
-        if (p.x < -6) p.x = W + 6; else if (p.x > W + 6) p.x = -6;
-        var a = conf.alpha * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
+        if (p.lift) p.vy += 0.0018;          // 被卷起后重力慢慢把它拉回来
+        p.x += p.vx + gust * (p.layer === 0 ? 1.3 : p.layer === 1 ? 1 : 0.65);
+        p.y += p.vy; p.rot += p.rotV;
+        if (p.y < -8) { p.y = H + 8; p.x = Math.random() * W; p.lift = false; p.vy = p.baseVy; }
+        else if (p.y > H + 8) {
+          // 落地的一部分被风重新卷起，形成一阵一阵的「叶阵 / 花瓣回旋」
+          if (conf.lift && !p.lift && Math.random() < conf.lift) {
+            p.y = H - rand(30, 150);
+            p.vy = -rand(0.10, 0.26) * (p.layer === 0 ? 1.2 : 1);
+            p.lift = true;
+          } else {
+            p.y = -8; p.x = Math.random() * W; p.lift = false; p.vy = p.baseVy;
+          }
+        }
+        if (p.x < -8) p.x = W + 8; else if (p.x > W + 8) p.x = -8;
+        var a = conf.alpha * LAYER[p.layer].a * (0.55 + 0.45 * Math.sin(p.ph + t * 0.001 * p.tw));
         if (a <= 0.01) continue;
+        // 摆动只改绘制位置，不改粒子本身坐标，避免逐帧累积漂走
+        var dx = p.sway ? Math.sin(t * 0.001 * p.swaySpeed + p.ph) * p.sway : 0;
+        p.x += dx;
         drawParticle(p, conf.colors[p.c], a, conf.shape);
+        p.x -= dx;
       }
       if (running && !document.hidden) rafId = requestAnimationFrame(frame);
     }
@@ -3811,7 +4139,7 @@ var Lunar = (function () {
         if (w === W && h === H && dpr === Math.min(window.devicePixelRatio || 1, 2)) return;
         resize();
         // 尺寸变了重撒粒子，避免全挤在旧区域
-        for (var k = 0; k < N; k++) ps[k] = spawn(W, H);
+        for (var k = 0; k < N; k++) ps[k] = spawn(W, H, layerOf(k));
       });
     }
     window.addEventListener('resize', onResize);
@@ -3849,6 +4177,7 @@ var Lunar = (function () {
       cfg = G.normalize(raw);
     }
     applyTheme(cfg.theme);
+    paintThemeStory();
     refs.hideTxt.textContent = cfg.display.hide_money ? '显示金额' : '隐藏金额';
     start();
   }

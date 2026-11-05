@@ -86,18 +86,65 @@ var Guliqi = (function () {
       { name: '一次旅行', price: 10000 }
     ],
     display: { hide_money: false },
-    theme: 'system',   // 见 THEME_LIST：三个默认值 + 五个彩色主题
+    theme: 'system',   // 见 THEME_META：一个模式 + 十二套场景主题
     demo: false,
     demo_offset: 0     // 演示时钟相对真实时间的偏移（毫秒），0 = 不偏移
   };
 
-  // 彩色主题清单（8 套）：极光夜 / 樱花粉 / 落日橙 / 薄荷绿 / 星河紫 / 深海蓝 / 水墨 / 霓虹夜。
-  // 随返回对象导出，head 防闪脚本、ui.js、store.py 的名单都要与这里同步。
-  var THEME_LIST = {
-    system: 1, light: 1, dark: 1,
-    aurora: 1, sakura: 1, sunset: 1, mint: 1, galaxy: 1,
-    ocean: 1, ink: 1, neon: 1
+  /* ---------- 主题元数据（唯一真源） ----------
+     命名统一「场景 + 意向 + 色彩」：前两字是场景、再两字是意向、末字是主色。
+     base 只决定深/浅底；meta 是标题栏颜色；sw 是设置里预览卡的渐变；
+     scene 是选中后显示的一句话；mode=true 表示它是「跟随系统」这个模式开关，
+     不对应具体场景。对象顺序 = 设置面板里的显示顺序。
+     内部 key 一律不改名：数据库、localStorage、防闪脚本都按 key 存，
+     这样升级后已选主题不会丢，也不需要写迁移。 */
+  var THEME_META = {
+    system:  { name: '跟随系统', mode: true, base: 'system', meta: '#07090d',
+               sw: 'linear-gradient(100deg,#202632 0 50%,#eef1f5 50% 100%)',
+               scene: '按 Windows 的明暗设置，自动使用下面两套默认场景。' },
+    light:   { name: '晨光素纸白', base: 'light', meta: '#f4f1e9',
+               sw: 'linear-gradient(115deg,#f7f4ec,#fffdf6 45%,#f4d9a8 88%)',
+               scene: '清晨窗边，日光斜落在素纸上，窗格影子缓缓移动。' },
+    dark:    { name: '静夜砚墨黑', base: 'dark', meta: '#080b11',
+               sw: 'linear-gradient(115deg,#080b11,#1a2130 55%,#c9a86a 92%)',
+               scene: '夜阑人静，砚墨般的底色里留一点暖灯微光。' },
+    aurora:  { name: '极夜流光青', base: 'dark', meta: '#04121a',
+               sw: 'linear-gradient(115deg,#04121a,#2dd4bf 45%,#a78bfa 78%,#0a1030)',
+               scene: '北极圈的雪原极夜，极光帘幕起伏，冰晶缓缓升起。' },
+    sakura:  { name: '春日樱花粉', base: 'light', meta: '#fff5f7',
+               sw: 'linear-gradient(115deg,#fff5f7,#ffb3c9 48%,#f472b6 82%,#8dbf7a)',
+               scene: '春日午后庭院，微风卷起大小不一的樱瓣，新芽刚绿。' },
+    sunset:  { name: '黄昏鎏金橙', base: 'dark', meta: '#1a0a06',
+               sw: 'linear-gradient(115deg,#2a1005,#ff922b 48%,#ff6b6b 78%,#4a1608)',
+               scene: '海岸黄昏，落日沉向双层远山，归鸟掠过鎏金云霞。' },
+    mint:    { name: '清晨薄荷绿', base: 'light', meta: '#eefaf4',
+               sw: 'linear-gradient(115deg,#eefaf4,#a7f3d0 45%,#10b981 85%)',
+               scene: '清晨温室露台，露珠沿薄荷叶脉滑落，晨雾慢慢流动。' },
+    galaxy:  { name: '深空星河紫', base: 'dark', meta: '#080515',
+               sw: 'linear-gradient(115deg,#080515,#7c3aed 45%,#f0abfc 82%,#1a1040)',
+               scene: '深夜高原，银河与星座明灭，偶有流星划过星环。' },
+    ocean:   { name: '深海光束蓝', base: 'dark', meta: '#03121f',
+               sw: 'linear-gradient(115deg,#03121f,#0e7490 45%,#22d3ee 82%,#04263a)',
+               scene: '深海水下，光束随水面摆动，半透明水母静静浮沉。' },
+    ink:     { name: '江南烟雨白', base: 'light', meta: '#f7f4ec',
+               sw: 'linear-gradient(115deg,#f7f4ec,#d9d2c2 45%,#3b403c 80%,#b7412f)',
+               scene: '江南烟雨，远山晕成淡墨，细雨里一叶乌篷船。' },
+    neon:    { name: '雨夜霓虹粉', base: 'dark', meta: '#090317',
+               sw: 'linear-gradient(115deg,#090317,#ff3ea5 45%,#22d3ee 82%,#160a2e)',
+               scene: '赛博雨夜，霓虹倒影拉长在湿地上，雨丝斜落。' },
+    autumn:  { name: '秋山枫叶红', base: 'light', meta: '#fdf1e3',
+               sw: 'linear-gradient(115deg,#fdf1e3,#e8593f 42%,#f0a92e 78%,#7a3b1d)',
+               scene: '秋日山径，枫叶与银杏旋转飘落，斜阳穿过林间。' },
+    snow:    { name: '雪夜暖灯白', base: 'light', meta: '#edf3f8',
+               sw: 'linear-gradient(115deg,#e8f0f7,#ffffff 45%,#ffd79a 82%,#8fa9bf)',
+               scene: '雪夜窗边，三层雪花缓缓落下，窗内暖灯轻轻呼吸。' }
   };
+
+  // 名单由元数据派生，别再维护第二份；normalize 和界面都读它
+  var THEME_LIST = {};
+  for (var _tk in THEME_META) {
+    if (Object.prototype.hasOwnProperty.call(THEME_META, _tk)) THEME_LIST[_tk] = 1;
+  }
 
   /* ---------- 小工具 ---------- */
   function p2(n) { return String(n).padStart(2, '0'); }
@@ -598,6 +645,7 @@ var Guliqi = (function () {
     DEFAULT_CFG: DEFAULT_CFG,
     STORE_KEY: STORE_KEY,
     THEME_LIST: THEME_LIST,
+    THEME_META: THEME_META,
     normalize: normalize,
     loadCfg: loadCfg,
     saveCfg: saveCfg,

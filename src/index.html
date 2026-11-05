@@ -14,23 +14,25 @@
    所以这里直接读 localStorage 的原始值，不经过 Guliqi.normalize（那时引擎还没加载）。
    彩色主题名单跟 engine.js 的 THEME_LIST 保持一致（这边要赶在引擎加载前用，只能各放一份）。 */
 (function () {
-  var BASE = { aurora: 'dark', sunset: 'dark', galaxy: 'dark', sakura: 'light', mint: 'light', ocean: 'dark', ink: 'light', neon: 'dark' };
+  var BASE = {
+    light: 'light', dark: 'dark',
+    aurora: 'dark', sunset: 'dark', galaxy: 'dark', ocean: 'dark', neon: 'dark',
+    sakura: 'light', mint: 'light', ink: 'light', autumn: 'light', snow: 'light'
+  };
   var mode = 'system';
   try {
     var s = localStorage.getItem('guliqi.cfg.v1');
     if (s) {
       var o = JSON.parse(s);
-      if (o && (o.theme === 'light' || o.theme === 'dark' || BASE[o.theme])) mode = o.theme;
+      if (o && BASE[o.theme]) mode = o.theme;
     }
   } catch (e) {}
-  var accent = BASE[mode] ? mode : '';
-  var dark = accent
-    ? BASE[accent] === 'dark'
-    : (mode === 'dark'
-      || (mode === 'system' && (!window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches)));
+  var sysDark = !window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var dark = BASE[mode] ? BASE[mode] === 'dark' : sysDark;
   var root = document.documentElement;
   root.setAttribute('data-theme', dark ? 'dark' : 'light');
-  if (accent) root.setAttribute('data-accent', accent);
+  // 「跟随系统」按解析出的明暗落到对应的默认场景；其余主题自己就是场景名
+  root.setAttribute('data-accent', BASE[mode] ? mode : (dark ? 'dark' : 'light'));
 })();
 </script>
 </head>
@@ -85,11 +87,54 @@
       <path d="M0 660 C 180 585 260 630 380 545 C 470 480 540 555 630 610 C 760 690 860 585 1010 620 C 1160 655 1280 590 1440 645 L1440 900 L0 900 Z" fill="#1e2321" opacity=".075" filter="url(#fxSoft2)"></path>
       <path d="M0 760 C 220 700 400 805 620 735 C 850 665 1020 790 1240 730 C 1320 705 1380 715 1440 740 L1440 900 L0 900 Z" fill="#1e2321" opacity=".1" filter="url(#fxSoft)"></path>
     </g>
+    <g class="fx-branch">
+      <path d="M-30 30 C 120 60 210 120 310 140 C 400 158 450 130 500 88" fill="none" stroke="#6b4a3a" stroke-width="8" stroke-linecap="round" opacity=".5"></path>
+      <path d="M190 112 C 240 140 262 190 258 244" fill="none" stroke="#6b4a3a" stroke-width="5" stroke-linecap="round" opacity=".45"></path>
+      <path d="M330 142 C 370 175 385 215 380 258" fill="none" stroke="#6b4a3a" stroke-width="4" stroke-linecap="round" opacity=".4"></path>
+      <g fill="#f28ab0" opacity=".62">
+        <circle cx="90" cy="58" r="13"></circle><circle cx="152" cy="88" r="10"></circle>
+        <circle cx="258" cy="238" r="12"></circle><circle cx="238" cy="188" r="8"></circle>
+        <circle cx="380" cy="252" r="11"></circle><circle cx="404" cy="132" r="9"></circle>
+        <circle cx="470" cy="108" r="12"></circle><circle cx="312" cy="132" r="9"></circle>
+      </g>
+    </g>
+    <g class="fx-birds" fill="none" stroke="#4a1c0c" stroke-width="3" stroke-linecap="round" opacity=".55">
+      <path d="M900 250 q 14 -12 28 0 q 14 -12 28 0"></path>
+      <path d="M980 210 q 11 -9 22 0 q 11 -9 22 0"></path>
+      <path d="M1050 275 q 9 -8 18 0 q 9 -8 18 0"></path>
+    </g>
+    <g class="fx-jelly" opacity=".3">
+      <path d="M250 470 C 250 420 350 420 350 470 C 350 490 330 500 300 500 C 270 500 250 490 250 470 Z" fill="#a5f3fc"></path>
+      <path d="M262 492 q -8 40 4 74 M282 498 q -6 48 2 82 M300 500 q 4 48 -2 86 M318 498 q 8 44 0 80 M338 490 q 10 38 0 70" fill="none" stroke="#a5f3fc" stroke-width="3" stroke-linecap="round"></path>
+      <path d="M1080 590 C 1080 550 1160 550 1160 590 C 1160 606 1144 614 1120 614 C 1096 614 1080 606 1080 590 Z" fill="#67e8f9"></path>
+      <path d="M1090 608 q -6 32 3 60 M1106 613 q -4 38 1 66 M1120 615 q 3 38 -1 70 M1134 612 q 6 34 0 62 M1150 606 q 8 30 0 54" fill="none" stroke="#67e8f9" stroke-width="2.5" stroke-linecap="round"></path>
+    </g>
+    <g class="fx-boat" opacity=".45">
+      <path d="M980 700 q 60 26 140 0 l -18 22 q -52 14 -104 0 Z" fill="#2b302c"></path>
+      <path d="M1020 700 q 0 -30 30 -30 q 30 0 30 30 Z" fill="#2b302c"></path>
+      <path d="M1050 670 l 0 30" stroke="#2b302c" stroke-width="3"></path>
+    </g>
+    <g class="fx-pine" fill="none" stroke="#3d5a52" stroke-width="5" stroke-linecap="round" opacity=".4">
+      <path d="M-20 900 C 120 820 190 700 230 560"></path>
+      <path d="M90 812 q -60 -20 -80 -60 M130 760 q 60 -30 76 -76 M170 700 q -66 -22 -90 -66 M205 626 q 60 -34 74 -86"></path>
+      <path d="M1400 900 C 1300 840 1260 740 1240 640"></path>
+      <path d="M1310 830 q 54 -24 72 -66 M1270 762 q -54 -24 -72 -66 M1248 688 q 52 -30 66 -76"></path>
+    </g>
+    <g class="fx-dunes">
+      <path d="M0 700 C 200 620 340 720 520 660 C 700 600 820 700 1000 640 C 1180 580 1320 680 1440 640 L1440 900 L0 900 Z"></path>
+      <path d="M0 780 C 220 720 400 810 640 760 C 880 710 1080 800 1280 750 C 1360 730 1400 745 1440 760 L1440 900 L0 900 Z"></path>
+    </g>
+    <g class="fx-snowdrift">
+      <path d="M0 810 C 240 760 420 840 700 800 C 980 760 1200 840 1440 795 L1440 900 L0 900 Z" fill="#ffffff" opacity=".55"></path>
+    </g>
   </svg>
   <div class="fx-sun"></div>
   <div class="fx-ring"></div>
   <div class="fx-grid"></div>
   <div class="fx-beams"></div>
+  <div class="fx-wind"></div><div class="fx-rays"></div><div class="fx-rain"></div>
+  <div class="fx-haze"></div><div class="fx-window"></div><div class="fx-meteor"></div>
+  <div class="fx-daylight"></div>
   <div class="fx-glow ga"></div><div class="fx-glow gb"></div><div class="fx-glow gc"></div>
   <div class="fx-grain"></div><div class="fx-scan"></div>
 </div>
@@ -235,7 +280,7 @@
     <div class="foot-r">
       <a class="author" href="https://github.com/yoea" target="_blank" rel="noopener noreferrer" title="打开作者 GitHub 主页">Ethan</a>
       <span class="dot">·</span>
-      <button class="ver" id="verNum" title="点击检查新版本">v1.4.15</button>
+      <button class="ver" id="verNum" title="点击检查新版本">v1.4.16</button>
     </div>
   </footer>
 </div>
@@ -363,20 +408,13 @@
     <div class="tab-pane" data-pane="look">
     <div class="field adv-field">
       <label>界面主题</label>
-      <div class="seg" id="fTheme" role="group" aria-label="界面主题">
+      <div class="theme-mode" id="themeMode" role="group" aria-label="跟随系统">
         <button type="button" data-theme-opt="system"><i class="sw" style="background:linear-gradient(100deg,#202632 0 50%,#eef1f5 50% 100%)"></i><span>跟随系统</span></button>
-        <button type="button" data-theme-opt="light"><i class="sw" style="background:linear-gradient(135deg,#ffffff,#f0f3f7 60%,#ffd27a)"></i><span>浅色</span></button>
-        <button type="button" data-theme-opt="dark"><i class="sw" style="background:linear-gradient(135deg,#0d1219,#1c2532 60%,#ffc857)"></i><span>深色</span></button>
-        <button type="button" data-theme-opt="aurora"><i class="sw" style="background:linear-gradient(115deg,#041b22,#2dd4bf 45%,#a78bfa 78%,#0a1030)"></i><span>极光夜</span></button>
-        <button type="button" data-theme-opt="sakura"><i class="sw" style="background:linear-gradient(115deg,#fdf4f6,#ffb3c9 48%,#f472b6 80%,#c8507f)"></i><span>樱花粉</span></button>
-        <button type="button" data-theme-opt="sunset"><i class="sw" style="background:linear-gradient(115deg,#2a1005,#ff922b 48%,#ff6b6b 78%,#4a1608)"></i><span>落日橙</span></button>
-        <button type="button" data-theme-opt="mint"><i class="sw" style="background:linear-gradient(115deg,#f2faf5,#a7f3d0 45%,#10b981 85%)"></i><span>薄荷绿</span></button>
-        <button type="button" data-theme-opt="galaxy"><i class="sw" style="background:linear-gradient(115deg,#0a0616,#7c3aed 45%,#f0abfc 82%,#1a1040)"></i><span>星河紫</span></button>
-        <button type="button" data-theme-opt="ocean"><i class="sw" style="background:linear-gradient(115deg,#03121f,#0e7490 45%,#22d3ee 82%,#04263a)"></i><span>深海蓝</span></button>
-        <button type="button" data-theme-opt="ink"><i class="sw" style="background:linear-gradient(115deg,#f7f4ec,#d9d2c2 45%,#3b403c 80%,#b7412f)"></i><span>水墨</span></button>
-        <button type="button" data-theme-opt="neon"><i class="sw" style="background:linear-gradient(115deg,#0b0618,#ff3ea5 45%,#22d3ee 82%,#160a2e)"></i><span>霓虹夜</span></button>
+        <em>按 Windows 明暗自动切换下面两套默认场景</em>
       </div>
-      <div class="hint">每套主题都有独立配色、边框和背景动效。点一下立刻预览，点保存才记住；右上角快捷按钮仍只切深浅。</div>
+      <div class="seg" id="fTheme" role="group" aria-label="场景主题"></div>
+      <div class="theme-story" id="themeStory"></div>
+      <div class="hint">每套主题都是「场景 + 意向 + 色彩」：主色约七成，点缀约三成，配专属背景动效。点一下立刻预览，点保存才记住；右上角快捷按钮仍只切两套默认主题。</div>
     </div>
 
     <div class="field adv-field">

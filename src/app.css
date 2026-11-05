@@ -243,7 +243,7 @@ body{
 .bar{position:relative;height:11px;border-radius:999px;background:var(--raise);border:1px solid var(--line);overflow:hidden}
 /* 过渡：宽度每次变化都平滑插值（午休停在原地、13:00 突然跳一格这类场景不再生硬）。
    缓动取"起步快、收尾稳"的曲线，60fps 下逐帧微调时视觉上就是匀速滑动。 */
-.bar>i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#2fbf82,#4ade9f 42%,#ffc857 100%);box-shadow:0 0 12px rgba(74,222,159,.3);transition:width .3s cubic-bezier(.33,0,.2,1)}
+.bar>i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--bar-a,#2fbf82),var(--bar-b,#4ade9f) 42%,var(--bar-c,#ffc857) 100%);box-shadow:0 0 12px var(--bar-glow,rgba(74,222,159,.3));transition:width .3s cubic-bezier(.33,0,.2,1)}
 /* 午休：轴按"当天时间"做刻度，午休段就按真实时长占位（1 小时 / 9 小时 ≈ 11%），
    left 与 width 都由 JS 按上下班和午休时间算，这里不写死。
    底色用 --surface（深色比轨道更深、浅色比轨道更白），条纹叠在它上面 ⇒ 整段不透明，
@@ -778,6 +778,8 @@ html.lock{overflow:hidden}
 .fx-sun{z-index:1;width:min(46vw,430px);height:min(46vw,430px);left:50%;top:58%;border-radius:50%;background:var(--fx-sun-bg);box-shadow:var(--fx-sun-glow);animation:fxSunBreathe 13s ease-in-out infinite alternate}
 .fx-hills path:nth-child(1){fill:var(--fx-hill-a,#3b1408)}
 .fx-hills path:nth-child(2){fill:var(--fx-hill-b,#1d0904)}
+.fx-dunes path:nth-child(1){fill:var(--fx-hill-a,#7a2e10)}
+.fx-dunes path:nth-child(2){fill:var(--fx-hill-b,#3b1408)}
 .fx-waves path:nth-child(1){fill:var(--fx-wave-a,rgba(255,255,255,.4))}
 .fx-waves path:nth-child(2){fill:var(--fx-wave-b,rgba(255,255,255,.2))}
 .fx-const path{fill:none;stroke:var(--fx-star-line,rgba(196,181,253,.22));stroke-width:1.2}
@@ -795,6 +797,39 @@ html.lock{overflow:hidden}
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 .fx-scan{z-index:5;inset:0;opacity:.55;background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 4px)}
 :root[data-accent] .fx-grain{display:block}
+
+/* ---------- 新增场景层：风 / 光束 / 雨丝 / 雾 / 窗光 / 流星 / 晨光窗格 ---------- */
+.fx-wind{z-index:1;inset:-10%;opacity:.5;
+  background:repeating-linear-gradient(172deg,transparent 0 74px,var(--fx-wind,rgba(255,255,255,.22)) 74px 76px,transparent 76px 150px);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 28%,#000 72%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 28%,#000 72%,transparent);
+  animation:fxWind 11s ease-in-out infinite alternate}
+.fx-rays{z-index:0;inset:-30%;opacity:.62;
+  background:repeating-linear-gradient(118deg,transparent 0 90px,var(--fx-ray,rgba(255,214,140,.12)) 90px 130px,transparent 130px 240px);
+  filter:blur(22px);animation:fxRays 20s ease-in-out infinite alternate}
+.fx-rain{z-index:3;inset:-20%;opacity:var(--fx-rain-op,.26);
+  background:repeating-linear-gradient(76deg,transparent 0 22px,var(--fx-rain,rgba(200,220,230,.5)) 22px 23px,transparent 23px 46px);
+  animation:fxRain .9s linear infinite}
+.fx-haze{z-index:1;left:-10%;right:-10%;bottom:0;height:58%;
+  background:radial-gradient(70% 100% at 20% 100%,var(--fx-haze,rgba(255,255,255,.35)),transparent 70%),radial-gradient(60% 90% at 85% 100%,var(--fx-haze,rgba(255,255,255,.3)),transparent 70%);
+  filter:blur(24px);animation:fxHaze 18s ease-in-out infinite alternate}
+.fx-window{z-index:1;right:6%;top:11%;width:min(24vw,240px);height:min(31vh,270px);border-radius:120px 120px 8px 8px;
+  background:var(--fx-win,radial-gradient(circle at 50% 40%,rgba(255,214,150,.55),rgba(255,186,90,.18) 65%,transparent 78%));
+  box-shadow:0 0 90px 40px var(--fx-win-glow,rgba(255,190,100,.22));
+  border:6px solid var(--fx-frame,rgba(120,140,160,.35));animation:fxWinBreathe 7s ease-in-out infinite alternate}
+.fx-window::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 48%,var(--fx-frame,rgba(120,140,160,.35)) 48% 52%,transparent 52%),linear-gradient(0deg,transparent 48%,var(--fx-frame,rgba(120,140,160,.35)) 48% 52%,transparent 52%)}
+.fx-meteor{z-index:3;left:12%;top:8%;width:180px;height:2px;background:linear-gradient(90deg,transparent,var(--fx-meteor,#fff));opacity:0;transform:rotate(-28deg);animation:fxMeteor 9s ease-in infinite}
+.fx-daylight{z-index:1;inset:0;opacity:.5;
+  background:linear-gradient(118deg,transparent 0 22%,var(--fx-day,rgba(255,225,170,.13)) 22% 26%,transparent 26% 48%,var(--fx-day,rgba(255,225,170,.1)) 48% 51%,transparent 51%);
+  animation:fxDay 24s ease-in-out infinite alternate}
+@keyframes fxWind{from{transform:translateX(-6%) skewX(-3deg);opacity:.14}to{transform:translateX(8%) skewX(4deg);opacity:.55}}
+@keyframes fxRays{from{transform:translateX(-3%)}to{transform:translateX(5%)}}
+@keyframes fxRain{from{background-position:0 0}to{background-position:-46px 92px}}
+@keyframes fxHaze{from{transform:translateX(-4%);opacity:.6}to{transform:translateX(5%);opacity:1}}
+@keyframes fxWinBreathe{from{opacity:.72}to{opacity:1}}
+@keyframes fxMeteor{0%,72%{opacity:0;transform:translate(0,0) rotate(-28deg)}76%{opacity:.9}88%{opacity:0;transform:translate(360px,190px) rotate(-28deg)}100%{opacity:0}}
+@keyframes fxDay{from{transform:translateX(-2%)}to{transform:translateX(3%)}}
 @keyframes fxFloatA{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(7vw,6vh,0) scale(1.14)}}
 @keyframes fxFloatB{from{transform:translate3d(0,0,0) scale(1.08)}to{transform:translate3d(-8vw,9vh,0) scale(.94)}}
 @keyframes fxFloatC{from{transform:translate3d(-5vw,0,0) scale(1)}to{transform:translate3d(6vw,-7vh,0) scale(1.12)}}
@@ -813,6 +848,14 @@ html.lock{overflow:hidden}
 .seg button.on{background:var(--w2);border-color:var(--gold-line-2);color:var(--text);font-weight:650;box-shadow:0 2px 10px rgba(0,0,0,.16)}
 .seg .sw{display:block;width:100%;height:21px;border-radius:6px;box-shadow:inset 0 0 0 1px rgba(128,128,128,.18)}
 .seg button.on .sw{box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),0 2px 9px rgba(0,0,0,.2)}
+
+/* 「跟随系统」是模式开关，单独一行；下面 12 张卡正好 4 列 3 行 */
+.theme-mode{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.theme-mode button{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--inset);color:var(--dim);font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap}
+.theme-mode button.on{border-color:var(--gold-line-2);background:var(--w2);color:var(--text);font-weight:650}
+.theme-mode .sw{width:22px;height:16px;border-radius:4px;display:block;box-shadow:inset 0 0 0 1px rgba(128,128,128,.18)}
+.theme-mode em{font-style:normal;font-size:11px;color:var(--faint);line-height:1.4}
+.theme-story{margin:8px 2px 0;min-height:30px;padding:7px 10px;border-left:2px solid var(--gold-line);background:var(--gold-tint);border-radius:0 8px 8px 0;font-size:11.5px;line-height:1.5;color:var(--dim)}
 
 /* ---------- 彩色主题 ----------
    八套主题 = 一组语义变量（配色/边框/圆角/阴影）+ 一组场景开关。
@@ -875,7 +918,7 @@ html.lock{overflow:hidden}
   --fx-hill-a:#3b1408;--fx-hill-b:#1d0904;
 }
 :root[data-accent=sunset] .fx-sun{display:block}
-:root[data-accent=sunset] .fx-hills{display:block}
+:root[data-accent=sunset] .fx-dunes{display:block}
 :root[data-accent=sunset] .card,:root[data-accent=sunset] .stat{backdrop-filter:blur(6px)}
 :root[data-accent=sunset] .btn.primary{background:linear-gradient(135deg,#ffd8a8,#ff922b);color:#341a03}
 
@@ -1013,6 +1056,141 @@ html.lock{overflow:hidden}
 :root[data-accent=ink] .msg{background:rgba(47,53,49,.04);border-color:rgba(47,53,49,.14)}
 :root[data-accent=ink] .msg .acc{background:#4b6b52}
 :root[data-accent=ink] .badge[data-s=idle]{color:#5b4a58;background:rgba(108,90,114,.1);border-color:rgba(108,90,114,.24)}
+
+/* ---------- 默认两套场景（钥匙仍是 light / dark，行为与右上角切换不变） ---------- */
+/* 晨光素纸白：米白宣纸感、斜落窗格光影、暖金点缀 */
+:root[data-accent=light]{
+  --bg:#f4f1e9;--surface:#fffdf7;--inset:#efebe0;--raise:#e9e3d5;
+  --line:#e0d9c8;--line-soft:#ebe5d8;--line-hover:#c9bda3;--line-focus:#a99a7b;
+  --text:#24241f;--dim:#5f6055;--faint:#8d8b7c;--tag:#8d8b7c;
+  --gold:#a9762a;--gold-2:#8a5c18;--amber:#c58a3a;--mint:#0f9a62;--cyan:#0b7fa8;--violet:#6d4bd8;
+  --hero-grad-a:#6b4710;--mask:rgba(24,24,20,.4);--hero-glow:rgba(214,170,90,.09);
+  --gold-tint:rgba(169,118,42,.08);--gold-tint-2:rgba(169,118,42,.13);--gold-tint-3:rgba(169,118,42,.2);
+  --gold-line:rgba(169,118,42,.3);--gold-line-2:rgba(169,118,42,.42);
+  --card-line:rgba(160,145,115,.3);--card-radius:14px;
+  --card-bg-a:rgba(255,253,247,.9);--card-bg-b:rgba(250,246,236,.82);
+  --card-shadow:0 4px 16px rgba(120,100,60,.08),inset 0 1px 0 rgba(255,255,255,.8);
+  --fx1:rgba(255,222,160,.4);--fx2:rgba(214,170,90,.2);--fx3:rgba(255,240,205,.4);--fx-op:.28;--fx-grain:.05;
+  --fx-day:rgba(214,170,90,.12);
+}
+:root[data-accent=light] body{background:radial-gradient(900px 500px at 8% -12%,rgba(255,220,150,.22),transparent 62%),var(--bg)}
+:root[data-accent=light] .fx-daylight{display:block}
+:root[data-accent=light] .btn.primary{background:linear-gradient(135deg,#ffd27a,#f0a02e);color:#3a2402}
+
+/* 静夜砚墨黑：克制墨蓝、一点暖砚光，不加花哨场景 */
+:root[data-accent=dark]{
+  --bg:#080b11;--surface:#0e131c;--inset:#070a10;--raise:#161d28;
+  --line:#222c3a;--line-soft:#1b2430;--line-hover:#334155;
+  --text:#e9edf4;--dim:#8c97a8;--faint:#59647a;--tag:#677387;
+  --gold:#d9b26a;--gold-2:#f0d49a;--amber:#c98f4c;--mint:#4ade9f;--cyan:#4cc9f0;--violet:#a78bfa;
+  --hero-grad-a:#fff3d2;--mask:rgba(3,5,9,.74);--hero-glow:rgba(217,178,106,.09);
+  --gold-tint:rgba(217,178,106,.07);--gold-tint-2:rgba(217,178,106,.13);--gold-tint-3:rgba(217,178,106,.2);
+  --gold-line:rgba(217,178,106,.3);--gold-line-2:rgba(217,178,106,.42);
+  --card-line:rgba(120,140,170,.2);--card-radius:16px;
+  --card-bg-a:rgba(20,27,38,.82);--card-bg-b:rgba(11,15,23,.72);
+  --card-shadow:0 10px 30px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.03);
+  --fx1:rgba(217,178,106,.14);--fx2:rgba(80,110,160,.12);--fx3:rgba(160,120,70,.1);--fx-op:.3;--fx-grain:.03;
+  --fx-day:rgba(120,150,200,.06);
+}
+:root[data-accent=dark] .fx-daylight{display:block;opacity:.32}
+
+/* ---------- 新增两套季节场景 ---------- */
+/* 秋山枫叶红：暖杏底色，枫红为主、银杏金与新绿点缀，斜阳光束 + 风线 + 远山 */
+:root[data-accent=autumn]{
+  --bg:#fdf1e3;--surface:#fff8ee;--inset:#f7e6d2;--raise:#f2d9bd;
+  --line:#eac9a8;--line-soft:#f2ddc4;--line-hover:#d9a878;--line-focus:#c08c53;
+  --text:#3b2317;--dim:#8a6247;--faint:#b08c70;--tag:#a58265;
+  --gold:#c2401f;--gold-2:#9c2f15;--amber:#e08a1e;--mint:#4b7a3a;--cyan:#8a6a2a;--violet:#8e4b6d;
+  --hero-grad-a:#8f2710;--mask:rgba(45,22,12,.42);--hero-glow:rgba(224,138,30,.12);
+  --gold-tint:rgba(194,64,31,.08);--gold-tint-2:rgba(194,64,31,.13);--gold-tint-3:rgba(194,64,31,.2);
+  --gold-line:rgba(194,64,31,.3);--gold-line-2:rgba(194,64,31,.44);
+  --card-line:rgba(194,64,31,.26);--card-radius:16px;
+  --card-bg-a:rgba(255,252,244,.9);--card-bg-b:rgba(253,238,220,.78);
+  --card-shadow:0 10px 28px rgba(140,70,25,.12),inset 0 1px 0 rgba(255,255,255,.85);
+  --fx1:rgba(240,169,46,.34);--fx2:rgba(194,64,31,.22);--fx3:rgba(120,150,60,.16);--fx-op:.45;--fx-grain:.1;
+  --fx-ray:rgba(255,190,90,.16);--fx-wind:rgba(180,90,40,.14);--fx-hill-a:#d19a63;--fx-hill-b:#b4713d;
+}
+:root[data-accent=autumn] body{background:radial-gradient(900px 500px at 12% -12%,rgba(240,169,46,.2),transparent 62%),var(--bg)}
+:root[data-accent=autumn] .fx-rays{display:block}
+:root[data-accent=autumn] .fx-wind{display:block}
+:root[data-accent=autumn] .fx-hills{display:block;opacity:.55}
+:root[data-accent=autumn] .day.done{background:rgba(194,64,31,.13);border-color:rgba(194,64,31,.24);color:#a23518}
+:root[data-accent=autumn] .day.today{background:linear-gradient(135deg,#f0a92e,#c2401f);color:#fff;box-shadow:0 0 0 3px rgba(194,64,31,.18),0 4px 14px rgba(194,64,31,.26)}
+:root[data-accent=autumn] .day.today i{color:#fff2e2;opacity:.9}
+:root[data-accent=autumn] .btn.primary{background:linear-gradient(135deg,#f0a92e,#c2401f);color:#fff}
+
+/* 雪夜暖灯白：冷雪白为主，暖窗灯金与松枝青灰点缀，窗框光晕 + 雪堆 + 松枝 */
+:root[data-accent=snow]{
+  --bg:#e9f0f6;--surface:#f8fbfe;--inset:#dfe9f2;--raise:#d3e0ec;
+  --line:#c8d8e6;--line-soft:#dbe7f1;--line-hover:#a8bfd2;--line-focus:#88a5bd;
+  --text:#1d2b38;--dim:#597085;--faint:#879bad;--tag:#8298aa;
+  --gold:#b8792a;--gold-2:#8f5a18;--amber:#e0a13c;--mint:#3f8f8a;--cyan:#2b7fa8;--violet:#6b7fb5;
+  --hero-grad-a:#7b4a10;--mask:rgba(20,35,50,.42);--hero-glow:rgba(255,200,110,.12);
+  --gold-tint:rgba(184,121,42,.08);--gold-tint-2:rgba(184,121,42,.13);--gold-tint-3:rgba(184,121,42,.2);
+  --gold-line:rgba(184,121,42,.3);--gold-line-2:rgba(184,121,42,.44);
+  --card-line:rgba(255,255,255,.92);--card-radius:20px;
+  --card-bg-a:rgba(255,255,255,.82);--card-bg-b:rgba(240,247,253,.68);
+  --card-shadow:0 12px 32px rgba(40,70,100,.14),inset 0 1px 0 rgba(255,255,255,.95);
+  --fx1:rgba(255,206,130,.42);--fx2:rgba(150,190,220,.3);--fx3:rgba(255,255,255,.5);--fx-op:.5;--fx-grain:.08;
+  --fx-win:radial-gradient(circle at 50% 45%,rgba(255,208,120,.9),rgba(255,170,60,.38) 55%,transparent 78%);
+  --fx-win-glow:rgba(255,170,70,.4);--fx-frame:rgba(88,110,132,.55);--fx-ray:rgba(255,200,110,.1);
+}
+:root[data-accent=snow] body{background:radial-gradient(900px 520px at 80% 0%,rgba(255,205,130,.2),transparent 60%),radial-gradient(800px 500px at 10% 100%,rgba(150,190,220,.22),transparent 62%),var(--bg)}
+:root[data-accent=snow] .fx-window{display:block;opacity:.9}
+:root[data-accent=snow] .fx-rays{display:block}
+:root[data-accent=snow] .fx-snowdrift{display:block}
+:root[data-accent=snow] .fx-pine{display:block}
+:root[data-accent=snow] .card,:root[data-accent=snow] .stat{backdrop-filter:blur(10px)}
+:root[data-accent=snow] .day.today{background:linear-gradient(135deg,#ffe0a8,#e0a13c);color:#3a2402;box-shadow:0 0 0 3px rgba(224,161,60,.2),0 4px 14px rgba(224,161,60,.26)}
+:root[data-accent=snow] .btn.primary{background:linear-gradient(135deg,#ffd79a,#e0a13c);color:#3a2402}
+
+/* ---------- 各场景专属元素开关 ---------- */
+:root[data-accent=aurora] .fx-snowdrift{display:block;opacity:.12}
+:root[data-accent=sakura]{--fx-wind:rgba(226,110,160,.2)}
+:root[data-accent=sakura] .fx-branch{display:block}
+:root[data-accent=sakura] .fx-wind{display:block}
+:root[data-accent=sunset] .fx-birds{display:block}
+:root[data-accent=sunset]{--fx-hill-a:#7a2e10;--fx-hill-b:#3b1408}
+:root[data-accent=mint] .fx-haze{display:block}
+:root[data-accent=mint] .fx-rays{display:block}
+:root[data-accent=galaxy]{--fx-meteor:rgba(233,213,255,.9)}
+:root[data-accent=galaxy] .fx-meteor{display:block}
+:root[data-accent=ocean] .fx-jelly{display:block}
+:root[data-accent=ink]{--fx-rain:rgba(90,105,100,.4);--fx-rain-op:.2;--fx-haze:rgba(255,255,255,.5)}
+:root[data-accent=ink] .fx-rain{display:block}
+:root[data-accent=ink] .fx-boat{display:block}
+:root[data-accent=ink] .fx-haze{display:block}
+:root[data-accent=neon]{--fx-rain:rgba(120,220,240,.4);--fx-rain-op:.24}
+:root[data-accent=neon] .fx-rain{display:block}
+
+/* ---------- 每套主题的进度条与提示气泡 ----------
+   这两处原本写死了绿，暖色/粉色/东方主题里会串味；按场景各归各的色系。 */
+:root[data-accent=light]{--bar-a:#c79a4e;--bar-b:#dcb46a;--bar-c:#a9762a;--bar-glow:rgba(169,118,42,.22)}
+:root[data-accent=dark]{--bar-a:#8a6a2a;--bar-b:#d9b26a;--bar-c:#f0d49a;--bar-glow:rgba(217,178,106,.22)}
+:root[data-accent=aurora]{--bar-a:#0f9a8a;--bar-b:#5eead4;--bar-c:#7dd3fc;--bar-glow:rgba(94,234,212,.3)}
+:root[data-accent=sakura]{--bar-a:#e0447c;--bar-b:#f472b6;--bar-c:#c2255c;--bar-glow:rgba(244,114,182,.3)}
+:root[data-accent=sunset]{--bar-a:#f2602a;--bar-b:#ffb057;--bar-c:#ffd08a;--bar-glow:rgba(255,169,77,.3)}
+:root[data-accent=mint]{--bar-a:#059669;--bar-b:#34d399;--bar-c:#a7f3d0;--bar-glow:rgba(52,211,153,.28)}
+:root[data-accent=galaxy]{--bar-a:#7c3aed;--bar-b:#c4b5fd;--bar-c:#f0abfc;--bar-glow:rgba(167,139,250,.32)}
+:root[data-accent=ocean]{--bar-a:#0e7490;--bar-b:#22d3ee;--bar-c:#a5f3fc;--bar-glow:rgba(34,211,238,.3)}
+:root[data-accent=ink]{--bar-a:#4b6b52;--bar-b:#8c918a;--bar-c:#a5442f;--bar-glow:rgba(47,53,49,.18)}
+:root[data-accent=neon]{--bar-a:#a855f7;--bar-b:#ff5cb8;--bar-c:#22d3ee;--bar-glow:rgba(255,92,184,.34)}
+:root[data-accent=autumn]{--bar-a:#c2401f;--bar-b:#e08a1e;--bar-c:#f0a92e;--bar-glow:rgba(224,138,30,.3)}
+:root[data-accent=snow]{--bar-a:#7fa8c4;--bar-b:#e0a13c;--bar-c:#ffd79a;--bar-glow:rgba(224,161,60,.26)}
+:root[data-accent=light] .msg{background:rgba(169,118,42,.05);border-color:rgba(169,118,42,.16)}
+:root[data-accent=light] .msg .acc{background:#a9762a}
+:root[data-accent=dark] .msg{background:rgba(217,178,106,.05);border-color:rgba(217,178,106,.14)}
+:root[data-accent=dark] .msg .acc{background:#d9b26a}
+:root[data-accent=aurora] .msg{background:rgba(94,234,212,.055);border-color:rgba(94,234,212,.18)}
+:root[data-accent=aurora] .msg .acc{background:#5eead4}
+:root[data-accent=ocean] .msg{background:rgba(103,232,249,.055);border-color:rgba(103,232,249,.18)}
+:root[data-accent=ocean] .msg .acc{background:#67e8f9}
+:root[data-accent=neon] .msg{background:rgba(255,92,184,.06);border-color:rgba(255,92,184,.2)}
+:root[data-accent=neon] .msg .acc{background:#ff5cb8}
+:root[data-accent=autumn] .msg{background:rgba(194,64,31,.05);border-color:rgba(194,64,31,.16)}
+:root[data-accent=autumn] .msg .acc{background:#c2401f}
+:root[data-accent=snow] .msg{background:rgba(90,130,165,.06);border-color:rgba(90,130,165,.16)}
+:root[data-accent=snow] .msg .acc{background:#7fa8c4}
 
 /* ---------- 大屏模式 ----------
    桌面壳检测到窗口接近铺满主屏（最大化或拖得很大）时给 <html> 加 bigscreen。
