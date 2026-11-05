@@ -316,32 +316,6 @@ body{
 .legend span{display:inline-flex;align-items:center;gap:5px}
 .legend i{width:8px;height:8px;border-radius:3px;display:inline-block}
 
-/* ---------- 更新提示 ---------- */
-.update-bar{
-  display:none;align-items:center;gap:10px;margin:0 0 13px;
-  padding:9px 11px;border-radius:12px;font-size:12.5px;line-height:1.5;
-  border:1px solid var(--gold-line);background:var(--gold-tint);color:var(--gold-2);
-}
-.update-bar.on{display:flex}
-.update-bar .dot{
-  width:6px;height:6px;border-radius:50%;background:var(--gold-2);flex:0 0 auto;
-  box-shadow:0 0 0 3px var(--gold-tint-2);
-}
-.update-bar .txt{flex:1;min-width:0}
-.update-bar .txt b{font-weight:700;letter-spacing:.3px}
-.update-bar .link{
-  border:1px solid var(--gold-line-2);background:var(--gold-tint-2);color:var(--gold-2);
-  border-radius:9px;padding:5px 11px;font-size:12px;font-family:inherit;cursor:pointer;
-  white-space:nowrap;transition:.16s;
-}
-.update-bar .link:hover{background:var(--gold-tint-3)}
-.update-bar .link:active{transform:scale(.97)}
-.update-bar .x{
-  border:none;background:none;color:var(--faint);font-size:15px;line-height:1;
-  cursor:pointer;padding:3px 1px 3px 3px;font-family:inherit;flex:0 0 auto;
-}
-.update-bar .x:hover{color:var(--dim)}
-
 /* ---------- 底栏 ---------- */
 /* 页脚贴底：窗口拉高时它落到最下面，中间的空白由上面的栅格吃掉 */
 .foot{display:flex;align-items:center;gap:11px;padding:10px 2px 0}

@@ -1040,12 +1040,6 @@
 
   var deskOpts = null;
 
-  function escHtml(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&quot;';
-    });
-  }
-
   // 托盘用的快照。Python 侧会按这份数据继续外推已赚和剩余时间，
   // 因为窗口藏起来以后系统会节流页面里的定时器。
   function statusPayload() {
@@ -1137,40 +1131,22 @@
     });
   }
 
-  /* ---------- 更新提示 ---------- */
+  /* ---------- 更新提示 ----------
+     发现新版本只有一种呈现：弹模态框问要不要去下载。顶部那条长提示已整个移除。
+     被动发现（启动检查、8 秒轮询）同一个版本只弹一次；右下角手动检查是用户
+     主动发起的，force=true 每次都给看，方便随时拿下载入口。 */
   var updateUrl = '';
   var updateTag = '';
   var updateDismissed = '';
   var lastUpdateAt = 0;      // 上次拿到结果的时间戳，用来判断"这次查完了没"
 
-  function showUpdate(info) {
+  function offerUpdate(info, force) {
     if (info && info.at) lastUpdateAt = info.at;
     if (!info || !info.newer || !info.tag) return;
-    if (updateDismissed === info.tag) return;
+    if (!force && updateDismissed === info.tag) return;
     updateTag = info.tag;
     updateUrl = info.url || '';
-    $('updateTxt').innerHTML = '发现新版本 <b>' + escHtml(info.tag) + '</b>'
-      + '，当前 v' + escHtml(info.current);
-    $('updateBar').classList.add('on');
-  }
-
-  $('btnUpdateGo').addEventListener('click', function () {
-    if (updateUrl) desk.send('open_url', updateUrl);
-  });
-
-  $('btnUpdateClose').addEventListener('click', function () {
-    updateDismissed = updateTag;
-    $('updateBar').classList.remove('on');
-  });
-
-  /* ---------- 手动查更新用的模态框 ----------
-     右下角点版本号检查更新，发现新版直接弹框问「要不要去下载」，
-     不再走顶部那条长提示（长提示留给启动/轮询这种被动发现）。
-     弹框的同时把 updateDismissed 记上，顶部条这次就别再冒出来了。 */
-  function showUpdateModal(info) {
-    updateTag = info.tag;
-    updateUrl = info.url || '';
-    updateDismissed = info.tag;
+    updateDismissed = info.tag;   // 本次运行里别反复弹同一个版本
     $('updPopTag').textContent = info.tag;
     $('updPopCur').textContent = 'v' + (info.current || '');
     $('updatePop').classList.add('open');
@@ -1188,7 +1164,7 @@
   function pollUpdate() {
     var p = desk.call('poll_update');
     if (!p || typeof p.then !== 'function') return;
-    p.then(function (info) { if (info) showUpdate(info); }, function () {});
+    p.then(function (info) { if (info) offerUpdate(info, false); }, function () {});
   }
 
   /* ---------- 全局 toast ----------
@@ -1231,7 +1207,7 @@
             btn.classList.remove('busy');
             btn.textContent = 'v' + (info.current || baseVer.replace(/^v/, ''));
             lastUpdateAt = info.at;
-            if (info.newer) showUpdateModal(info);   // 发现新版：弹框问要不要去下载
+            if (info.newer) offerUpdate(info, true);   // 手动查：每次都给看下载入口
             else toast('已是最新版本 v' + (info.current || ''));
           } else if (tries < 16) {
             setTimeout(wait, 700);
@@ -1353,7 +1329,7 @@
     $('fCloseExit').checked = !!opts.close_exit;
     paintCloseHint();
     paintAbout(opts);
-    if (opts.update) showUpdate(opts.update);
+    if (opts.update) offerUpdate(opts.update, false);
   }
 
   function loadDeskOpts() {
