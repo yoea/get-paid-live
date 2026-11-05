@@ -415,7 +415,7 @@
     setHTML('msg', renderMsg(snap.msg));
 
     // 进度：数字是净工时完成度，条形长度是"今天过到哪"（含午休，见 spanProgress）
-    setText('pct', (snap.progress * 100).toFixed(1) + '%');
+    setText('pct', (snap.progress * 100).toFixed(4) + '%');
     var p = Math.max(0, Math.min(1, snap.spanProgress));
     if (cache.barP !== p) {
       cache.barP = p;
@@ -635,6 +635,23 @@
     if (panelFitTimer) clearTimeout(panelFitTimer);
     panelFitTimer = setTimeout(fitPanelBody, 120);
   });
+
+  /* ---------- 大屏模式 ----------
+     窗口宽高都达到屏幕可用区 90%（最大化或拖得很大）时给 <html> 加
+     bigscreen：内容拉伸铺满窗口、版心放宽、关键数字放大（样式见 app.css）。
+     检测全在 JS 里做——innerWidth 和 screen.avail* 同属 CSS 像素坐标系，
+     不受系统 DPI 缩放影响（此前用 Python 侧 GetSystemMetrics 物理像素
+     对比 pywebview 逻辑像素，缩放 ≠100% 的机器上永远判不中，已废弃）。
+     小窗口不加类，首次启动的自动收窗测量不受影响。 */
+  function syncBigscreen() {
+    var sw = (screen.availWidth || screen.width) || 0;
+    var sh = (screen.availHeight || screen.height) || 0;
+    if (!sw || !sh) return;
+    var big = window.innerWidth >= sw * 0.9 && window.innerHeight >= sh * 0.9;
+    document.documentElement.classList.toggle('bigscreen', big);
+  }
+  window.addEventListener('resize', syncBigscreen);
+  syncBigscreen();
 
   function paintWeek() {
     weekBtns.forEach(function (b) {
