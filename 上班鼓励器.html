@@ -786,6 +786,30 @@ html.lock{overflow:hidden}
 :root[data-theme=light] input[type=checkbox]{accent-color:#0f9a62}
 /* 浅色下白面板压在白灰蒙层上只靠边框分不开，补一层柔光让它浮起来 */
 :root[data-theme=light] .panel{box-shadow:0 24px 70px rgba(16,24,38,.2)}
+
+/* ---------- 大屏模式 ----------
+   桌面壳检测到窗口接近铺满主屏（最大化或拖得很大）时给 <html> 加 bigscreen。
+   此时内容吃满窗口高度：卡片、日历格子自然长高，版心加宽，关键数字放大。
+   平时窗口保持内容自然高度——首次启动的自动收窗测量不受影响，样式零变化。 */
+html.bigscreen .app{flex:1 0 auto}
+html.bigscreen .grid{align-content:stretch}
+html.bigscreen .card{padding:20px 22px}
+html.bigscreen .hero{padding-top:26px;padding-bottom:26px}
+html.bigscreen .clock{font-size:16px}
+html.bigscreen .stat .v{font-size:clamp(15px,3.9vw,21px)}
+html.bigscreen .prog-head .p{font-size:26px}
+html.bigscreen .day b{font-size:13px}
+html.bigscreen .day i{font-size:10px}
+@supports (container-type:inline-size){
+  html.bigscreen .hero-money{font-size:clamp(34px,13cqw,92px)}
+  html.bigscreen .hero-money.masked{font-size:clamp(28px,10.5cqw,72px)}
+  html.bigscreen .cur{font-size:clamp(18px,5.4cqw,32px)}
+  html.bigscreen .duo .v{font-size:clamp(14px,4.6cqw,24px)}
+}
+/* 很宽的屏幕上版心也跟着放宽，两侧不至于空出两大条 */
+@media(min-width:1500px){
+  .app{max-width:1300px}
+}
 </style>
 <script>
 /* 主题必须在第一帧之前定下来，否则深色用户每次启动都会看见一瞬白底。

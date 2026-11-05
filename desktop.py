@@ -551,7 +551,31 @@ def on_resized(*_args):
     # 程序自己 resize（fit_window）引起的 WM_SIZE 不算用户行为
     if time.time() < state.fit_until:
         return
+    _sync_bigscreen()
     _remember_size_soon()
+
+
+def _sync_bigscreen(*_args):
+    """窗口接近铺满主屏（最大化或拖得很大）时告诉界面进入「大屏模式」：
+    内容会拉伸填满窗口、版心加宽、关键数字放大。平时（含首次启动的默认
+    小窗）不加这个类，内容保持自然高度，自动收窗的测量不受影响。"""
+    win = state.window
+    if win is None:
+        return
+    big = False
+    sw, sh = _screen_size()
+    if sw and sh:
+        try:
+            big = win.width >= sw * 0.9 and win.height >= sh * 0.9
+        except Exception:
+            big = False
+    try:
+        win.evaluate_js(
+            'document.documentElement.classList.toggle("bigscreen",%s)'
+            % ("true" if big else "false")
+        )
+    except Exception:
+        pass
 
 
 def notify(title, message):
@@ -1182,11 +1206,16 @@ def main():
         window.events.closing += on_closing
         try:
             window.events.resized += on_resized   # 拖一下边框就记下来（debounce 0.8s）
+            window.events.resized += _sync_bigscreen  # 最大化/大窗口时让界面铺满
+            window.events.maximized += _sync_bigscreen
+            window.events.restored += _sync_bigscreen
         except Exception:
             pass
 
         _start_quit_watcher()      # 认「让位」信号，新版本要接手时走正常退出
         _publish_when_ready()      # 窗口建好后把句柄补进共享内存
+        # 启动时如果恢复的窗口本身就是大窗口，等页面就绪后补一次模式同步
+        threading.Timer(1.5, _sync_bigscreen).start()
 
         start_tray()
         threading.Thread(target=_delayed_update_check, daemon=True).start()
