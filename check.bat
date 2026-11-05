@@ -17,10 +17,12 @@ if errorlevel 1 goto fail
 node --check src\ui.js
 if errorlevel 1 goto fail
 
-echo [3/4] Engine + theme tests ...
+echo [3/4] Engine + theme + holiday tests ...
 node tests\engine.test.js
 if errorlevel 1 goto fail
 python tests\theme.test.py
+if errorlevel 1 goto fail
+python tests\holidays.test.py
 if errorlevel 1 goto fail
 
 echo [4/4] Python compile ...

@@ -108,6 +108,26 @@ t('休息日不累计工时', function () {
   assert.strictEqual(s.worked, 0);
 });
 
+console.log('节假日与调休');
+t('默认配置内置 2026 年 6 天官方补班日', function () {
+  assert.deepStrictEqual(G.defaults().makeup_workdays, [
+    '2026-01-04', '2026-02-14', '2026-02-28',
+    '2026-05-09', '2026-09-20', '2026-10-10'
+  ]);
+});
+
+t('10-10（周六）和 9-20（周日）算工作日', function () {
+  var cal = new G.WorkCalendar(G.normalize(G.defaults()));
+  assert.strictEqual(cal.isWorkday(at(2026, 10, 10)), true);
+  assert.strictEqual(cal.isWorkday(at(2026, 9, 20)), true);
+});
+
+t('春节 2/23 放假、2/28 补班都按官方通知算', function () {
+  var cal = new G.WorkCalendar(G.normalize(G.defaults()));
+  assert.strictEqual(cal.isWorkday(at(2026, 2, 23)), false);
+  assert.strictEqual(cal.isWorkday(at(2026, 2, 28)), true);
+});
+
 console.log('格式');
 t('parseHHMM 认得出正常值、拒绝脏值', function () {
   assert.deepStrictEqual(G.parseHHMM('09:05'), { h: 9, mi: 5 });

@@ -266,6 +266,7 @@
     loadNotes();
 
     $('calTitle').innerHTML = '<b>' + view.y + '</b> 年 <b>' + (view.m + 1) + '</b> 月';
+    $('calWatermark').textContent = String(view.m + 1).padStart(2, '0');
     $('calToday').style.display = isCur ? 'none' : '';
 
     var first = new Date(view.y, view.m, 1);

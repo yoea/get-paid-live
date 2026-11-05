@@ -139,8 +139,8 @@ exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的
 ```bash
 # 1. 改 version.py：VERSION = "1.4.17"
 # 2. 顺手改 src/index.html 里的 <button id="verNum">v1.4.17</button>，然后跑一次 python merge.py
-# 3. 在 .github/release-notes.md 里加一段「## v1.4.17」——记住插在最上面，
-#    那个文件是 Release 正文，最新的必须排第一，往下才是历史版本
+# 3. 把 .github/release-notes.md 里上一版的内容移到 docs/CHANGELOG.md，
+#    然后只写这一版的「## v1.4.17」——Release 正文只留当前版本
 # 4. 提交
 git add -A && git commit -m "v1.4.17"
 git push
@@ -163,11 +163,11 @@ git push origin v1.4.17
 | 打包 | 跑 `python build.py`，产出单文件 exe |
 | 校验产物 | 文件名里必须含版本号、体积必须大于 5 MB，否则判定打包缺东西 |
 | 存构建产物 | 上传到 Actions 的 Artifacts，保留 7 天 |
-| 发 Release | 用 `gh release` 创建版本并附上 exe，正文整段取自 `.github/release-notes.md` |
+| 发 Release | 用 `gh release` 创建版本并附上 exe，正文整段取自 `.github/release-notes.md`（只有当前版本） |
 
 **版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.18、exe 里却是 1.4.17」这种发出去才发现的问题。
 
-Release 正文的排序也是约定：`.github/release-notes.md` 里最上面永远是最新版本，新段落往下压一层旧的，长期不变的功能说明固定在最后一节。CI 原样使用，不做任何重排。
+Release 正文只写当前这一版：`.github/release-notes.md` 里除注释外只有最新版本的段落，历史版本全部归档在 [docs/CHANGELOG.md](docs/CHANGELOG.md)。发新版时先把旧段落搬进 CHANGELOG，再写新段落。CI 原样使用，不做任何重排。
 
 ### 只想试打包，不想发版
 
@@ -270,13 +270,14 @@ app.ico                       应用图标（窗口和托盘共用）
 LICENSE                       MIT 许可证
 .github/workflows/build.yml   CI：推 v* 标签自动构建并发 Release
 docs/PRIVACY.md               隐私政策（数据只存本机，不上传）
-.github/release-notes.md      Release 正文模板
+.github/release-notes.md      Release 正文（只含当前版本）
+docs/CHANGELOG.md             历史版本更新记录
 assets/screenshot.png         README 用的界面截图
 ```
 
 ## 已知限制
 
-- **内置 2026–2027 年节假日安排**（2027 年按国务院办公厅通知预置）。两年之后请自行在设置里补充，或者干脆留空——留空不会报错，只会把节假日当工作日算。调休补班日因各公司排班不同，默认留空，需要你自己填。
+- **内置 2026 年官方节假日与 6 天调休补班日**（国办发明电〔2025〕7号：1/4、2/14、2/28、5/9、9/20、10/10）；2027 年放假日期按《全国年节及纪念日放假办法》推算，国务院通知尚未发布，故不预置补班日。各公司排班不同，设置里随时增删改，老版本升级时会自动补齐一次且之后不再回灌。两年之后请自行补充，留空不会报错，只会把节假日当工作日算。
 - 统计只覆盖**当月和当年**，没有历史账本，也不构成任何财务建议。
 - 只支持 **Windows 10 及以上**。开机启动、托盘都是 Windows 专属实现，没有跨平台版本。
 - 托盘文案精确到分钟，按最后一次界面快照最多外推 4 小时。电脑睡眠跨过午休时可能要打开界面让它重新同步一次。

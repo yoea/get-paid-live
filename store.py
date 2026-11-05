@@ -31,6 +31,25 @@ THEME_VALUES = (
     "ocean", "ink", "neon", "autumn", "snow",
 )
 
+# 国务院办公厅关于 2026 年部分节假日安排的通知（国办发明电〔2025〕7号）。
+# 必须与 src/engine.js 的 DEFAULT_CFG 一致，tests/holidays.test.py 会钉住两份名单。
+# 2027 年通知未发布，这里不预置任何 2027 补班日。
+OFFICIAL_2026_HOLIDAYS = (
+    "2026-01-01", "2026-01-02", "2026-01-03",
+    "2026-02-15", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19",
+    "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23",
+    "2026-04-04", "2026-04-05", "2026-04-06",
+    "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05",
+    "2026-06-19", "2026-06-20", "2026-06-21",
+    "2026-09-25", "2026-09-26", "2026-09-27",
+    "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04",
+    "2026-10-05", "2026-10-06", "2026-10-07",
+)
+OFFICIAL_2026_MAKEUP = (
+    "2026-01-04", "2026-02-14", "2026-02-28",
+    "2026-05-09", "2026-09-20", "2026-10-10",
+)
+
 _path = None
 
 SCHEMA = """
@@ -105,9 +124,26 @@ def _connect():
     return conn
 
 
+def _seed_official_2026(conn):
+    """老库升级时一次性补齐 2026 年官方放假 / 调休补班日。
+
+    只增不删：用户手工加的 10-10、自己改过的节假日都保留，只把通知里有
+    而库里没有的日期补进去。meta 里留标记，之后用户删掉哪天也不会在下次
+    启动时被重新灌回来。新装用户走首次引导保存整份默认配置，结果一致。
+    """
+    if conn.execute("SELECT 1 FROM meta WHERE key='official2026'").fetchone():
+        return
+    for d in OFFICIAL_2026_HOLIDAYS:
+        conn.execute("INSERT OR IGNORE INTO holidays(date, kind) VALUES(?, 'holiday')", (d,))
+    for d in OFFICIAL_2026_MAKEUP:
+        conn.execute("INSERT OR IGNORE INTO holidays(date, kind) VALUES(?, 'makeup')", (d,))
+    conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('official2026', '1')")
+
+
 def _migrate(conn):
     row = conn.execute("SELECT value FROM meta WHERE key='schema'").fetchone()
     cur = int(row["value"]) if row else 0
+    _seed_official_2026(conn)
     if cur < SCHEMA_VERSION:
         # 表都是 IF NOT EXISTS 建的，这里只记版本，供以后加字段时判断
         conn.execute(

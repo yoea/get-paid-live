@@ -324,9 +324,16 @@ body{
   background:linear-gradient(135deg,#ffe08a,#ff9e5e);color:#241503;font-weight:750;
   border-color:transparent;box-shadow:0 0 0 3px rgba(255,200,87,.16),0 4px 14px rgba(255,158,94,.28);
 }
-.legend{display:flex;flex-wrap:wrap;gap:9px 14px;margin-top:12px;font-size:11px;color:var(--faint)}
-.legend span{display:inline-flex;align-items:center;gap:5px}
-.legend i{width:8px;height:8px;border-radius:3px;display:inline-block}
+/* 日历：状态图例已移除，改在日期下方叠一个大月份数字水印。
+   放在内容之上但透明度极低，既能完整看见数字，又不影响日期可读性。 */
+.card.cal-card{overflow:hidden;padding-bottom:18px}
+.cal-head,.week,.days{position:relative;z-index:1}
+.cal-watermark{
+  position:absolute;right:18px;bottom:2px;z-index:2;
+  font-size:clamp(110px,15vw,170px);font-weight:800;line-height:1;
+  letter-spacing:-.07em;color:var(--text);opacity:.055;
+  pointer-events:none;user-select:none;
+}
 
 /* ---------- 底栏 ---------- */
 /* 页脚贴底：窗口拉高时它落到最下面，中间的空白由上面的栅格吃掉 */

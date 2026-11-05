@@ -244,7 +244,7 @@
         </div>
       </section>
 
-      <section class="card">
+      <section class="card cal-card">
         <div class="cal-head">
           <div class="cal-left">
             <button class="cal-nav" id="calPrev" aria-label="上个月" title="上个月">‹</button>
@@ -258,14 +258,7 @@
           <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
         </div>
         <div class="days" id="days"></div>
-        <div class="legend">
-          <span><i style="background:rgba(74,222,159,.5)"></i>已过</span>
-          <span><i style="background:rgba(255,255,255,.14)"></i>未到</span>
-          <span><i style="background:rgba(70,92,133,.75)"></i>周末</span>
-          <span><i style="background:rgba(157,123,239,.7)"></i>法定节假日</span>
-          <span><i style="background:linear-gradient(135deg,#ffe08a,#ff9e5e)"></i>今天</span>
-          <span><i style="background:var(--note-dot);border-radius:50%"></i>有备注</span>
-        </div>
+        <div class="cal-watermark" id="calWatermark" aria-hidden="true"></div>
       </section>
     </div>
   </main>
@@ -388,13 +381,13 @@
     <div class="field adv-field">
       <label>法定节假日（一行一个，YYYY-MM-DD）</label>
       <textarea id="fHolidays" spellcheck="false" placeholder="2026-10-01"></textarea>
-      <div class="hint">已内置 2026–2027 年安排，可自行增删。留空也安全：会当作没有节假日，只按周末推算，不会出错。</div>
+      <div class="hint">已内置 2026 年官方安排（春节 2/15–2/23 连休 9 天）和 2027 年推算日期，可自行增删。留空也安全：会当作没有节假日，只按周末推算，不会出错。</div>
     </div>
 
     <div class="field adv-field">
       <label for="fMakeup">调休补班日（一行一个，YYYY-MM-DD）</label>
       <textarea id="fMakeup" spellcheck="false" placeholder="2026-09-27"></textarea>
-      <div class="hint">周末要上班的日子，填了这两天就算工作日。默认留空——各公司排班不一样，空着只会把补班日当休息日算，不会出错。</div>
+      <div class="hint">周末要上班的日子，填了就算工作日。已内置 2026 年官方 6 天补班日；各公司排班不一样，可自行增删，留空只会把补班日当休息日算，不会出错。</div>
     </div>
     </div>
 
