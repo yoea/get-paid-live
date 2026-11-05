@@ -2905,6 +2905,10 @@ var Lunar = (function () {
         + '<b>' + d + '</b>' + (sub ? '<i>' + sub + '</i>' : '')
         + '</div>';
     }
+    // 固定 6 行（42 格）：11 月这种 6 行的月份和 10/12 月这种 5 行的月份
+    // 卡片一样高，翻月不再忽高忽低。补出来的空格子沿用 .pad，不吃点击。
+    var cells = lead + last;
+    for (var padIdx = cells; padIdx < 42; padIdx++) html += '<div class="day pad"></div>';
     refs.days.innerHTML = html;
   }
 
