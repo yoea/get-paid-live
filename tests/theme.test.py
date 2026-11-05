@@ -18,6 +18,7 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 import store  # noqa: E402
+import win_titlebar  # noqa: E402
 
 
 def read(path):
@@ -60,6 +61,16 @@ def main():
                        k + " 标题栏色合法")
         names.append(m["name"])
     total += check(len(set(names)) == len(names), "12 个名字不重复")
+
+    # 原生标题栏染色：DWM 收的是 BGR 顺序的 COLORREF，写反了颜色会错
+    total += check(win_titlebar.colorref("#fff5f7") == 0xF7F5FF,
+                   "标题栏色转成 BGR COLORREF")
+    total += check(win_titlebar.colorref("#080b11") == 0x110B08,
+                   "深色标题栏色转换正确")
+    total += check(win_titlebar.colorref("bogus") is None
+                   and win_titlebar.colorref("") is None, "脏颜色被挡掉")
+    total += check(all(win_titlebar.colorref(meta[k]["meta"]) is not None for k in scenes),
+                   "12 套主题的标题栏色都能转换")
 
     head = read(os.path.join("src", "index.html"))
     css = read(os.path.join("src", "app.css"))

@@ -26,7 +26,7 @@ python tests\holidays.test.py
 if errorlevel 1 goto fail
 
 echo [4/4] Python compile ...
-python -m py_compile desktop.py store.py build.py merge.py version.py
+python -m py_compile desktop.py store.py build.py merge.py version.py win_titlebar.py
 if errorlevel 1 goto fail
 
 echo.

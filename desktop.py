@@ -27,6 +27,7 @@ import webbrowser
 import webview
 
 import store
+import win_titlebar
 from version import VERSION
 
 APP_ID = "Ewing.ShangBanGuLiQi.Desktop"
@@ -278,6 +279,18 @@ def _own_hwnd():
             return hwnd
         hwnd = u.FindWindowExW(None, hwnd, None, TITLE)
     return 0
+
+
+def set_titlebar_color(color, dark=False):
+    """把系统标题栏染成当前主题色。颜色由界面从 THEME_META.meta 传进来，
+    Python 这边不另存一份名单；Win10 或窗口还没建好时静默失败即可。"""
+    if sys.platform != "win32":
+        return False
+    try:
+        hwnd = _own_hwnd()
+    except Exception:
+        return False
+    return win_titlebar.apply(hwnd, color, dark)
 
 
 def _read_info():
@@ -1081,6 +1094,12 @@ class Api(object):
             except Exception:
                 return False
         return False
+
+    def set_titlebar(self, payload):
+        """界面切主题时把原生标题栏染成同一色系。"""
+        if not isinstance(payload, dict):
+            return False
+        return set_titlebar_color(payload.get("color"), bool(payload.get("dark")))
 
     def hide_window(self):
         win = state.window

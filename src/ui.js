@@ -51,6 +51,21 @@
     if (meta) meta.setAttribute('content', TM[accent].meta);
     root.style.colorScheme = dark ? 'dark' : 'light';
     paintThemeBtn(dark);
+    syncTitlebar();
+  }
+
+  /* 系统标题栏是 Windows 画的，网页 CSS 碰不到。用 DWM 把它染成同一色系，
+     颜色直接读 THEME_META.meta，不另存名单。桥没就绪（启动早期、纯浏览器
+     直开）就跳过，pywebviewready 和兜底定时器里会各补发一次。 */
+  function syncTitlebar() {
+    if (typeof desk === 'undefined' || !desk.ready()) return;
+    var root = document.documentElement;
+    var accent = root.getAttribute('data-accent') || 'dark';
+    var m = TM[accent] || TM.dark;
+    desk.send('set_titlebar', {
+      color: m.meta,
+      dark: root.getAttribute('data-theme') === 'dark'
+    });
   }
 
   // 顶栏那个图标的提示跟着实际明暗走（图标本身靠 CSS 的 [data-theme] 切）
@@ -1743,6 +1758,7 @@
     loadDeskOpts();
     pushStatus();
     pollUpdate();
+    syncTitlebar();
   });
   setInterval(pushStatus, 5000);
   setInterval(pollUpdate, 8000);
@@ -1751,5 +1767,6 @@
     loadDeskOpts();
     pollUpdate();
     pushStatus();
+    syncTitlebar();
   }, 2500);
 })();
