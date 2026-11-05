@@ -77,14 +77,19 @@ def write_version_file():
 
 
 def check_html_version():
-    """界面里的版本号是硬编码的，这里核对一下有没有忘了同步。"""
+    """界面里的版本号是硬编码的，这里核对一下有没有忘了同步。
+
+    按钮上还有 title 等属性，别拿 id="verNum"> 这种写死的子串去比，
+    否则明明同步了也会误报（v1.4.18 踩过一次）。
+    """
+    import re
     page = os.path.join(HERE, NAME + ".html")
     try:
         with open(page, encoding="utf-8") as f:
             html = f.read()
     except OSError:
         return True
-    if 'id="verNum">v' + VERSION + "<" in html:
+    if re.search(r'id="verNum"[^>]*>v' + re.escape(VERSION) + r"<", html):
         return True
     print("提示：%s 里的签名版本号不是 v%s，记得同步。" % (NAME + ".html", VERSION))
     return False
