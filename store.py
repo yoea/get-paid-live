@@ -356,6 +356,7 @@ def load_opts():
                 ("autostart_initialized", "bool"),
                 ("check_update", "bool"),
                 ("notify_schedule", "bool"),
+                ("close_exit", "bool"),
             ):
                 raw = _get(conn, "desk." + key)
                 if raw is None:

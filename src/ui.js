@@ -805,6 +805,7 @@
 
   // 演示时间：勾上才展开；点快捷时段只填值，点保存才生效（跟其他项一致）
   $('fDemo').addEventListener('change', function () { syncDemoUI(true); });
+  $('fCloseExit').addEventListener('change', paintCloseHint);   // 勾选时立刻预览提示语
   $('fDemoTime').addEventListener('input', paintChips);
   $('btnDemoClear').addEventListener('click', function () {
     $('fDemoTime').value = '';
@@ -1279,6 +1280,14 @@
   });
 
   /* ---------- 桌面选项 ---------- */
+  function paintCloseHint() {
+    var el = $('deskHint');
+    if (!el) return;
+    el.textContent = $('fCloseExit').checked
+      ? '点叉号会直接退出程序，计时随之结束。'
+      : '点叉号不会退出，程序缩到右下角托盘继续计时；点托盘图标回到界面。';
+  }
+
   function applyDeskOpts(opts) {
     if (!opts) return;
     deskOpts = opts;
@@ -1286,6 +1295,8 @@
     $('fAutostart').checked = !!opts.autostart;
     $('fCheckUpdate').checked = !!opts.check_update;
     $('fNotify').checked = opts.notify_schedule !== false;
+    $('fCloseExit').checked = !!opts.close_exit;
+    paintCloseHint();
     paintAbout(opts);
     if (opts.update) showUpdate(opts.update);
   }
@@ -1301,6 +1312,7 @@
     desk.send('set_autostart', !!$('fAutostart').checked);
     desk.send('set_check_update', !!$('fCheckUpdate').checked);
     desk.send('set_notify_schedule', !!$('fNotify').checked);
+    desk.send('set_close_exit', !!$('fCloseExit').checked);
   }
 
   /* ---------- 背景粒子 ----------

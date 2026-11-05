@@ -493,7 +493,6 @@ class _State(object):
         self.status = {}          # 界面每隔几秒推来的快照
         self.status_at = 0.0
         self.update = None        # 查到的版本信息，供界面轮询取走
-        self.first_hide = True
         self.notices = {}         # 到点提醒的去重表：{(kind, 日期): True}
         self.win_saved = False    # 本次启动用的是上次记住的尺寸（是就不再自动收窗口）
         self.fit_size = None      # 程序自己 fit 出来的尺寸，用来区分"用户拖的"
@@ -571,6 +570,11 @@ def notify(title, message):
 
 def notify_enabled():
     return bool(load_options().get("notify_schedule", True))
+
+
+def close_exit_enabled():
+    """点叉号是直接退出（True）还是缩进托盘继续跑（False，默认）。"""
+    return bool(load_options().get("close_exit", False))
 
 
 def _money(value, masked):
@@ -776,11 +780,20 @@ def on_closing():
     注意 pywebview 的约定是反的：handler 返回 False 才表示"不许关"
     （Event.set() 只有在有 handler 返回 False 时才返回 True，winforms 拿到 True 就 Cancel）。
     所以下面"放行"返回 True，"拦下"返回 False。
+
+    收进托盘时静默处理，不弹"还在后台跑"之类的通知——关窗口是用户的主动
+    操作，行为在设置里写得明明白白，再弹一条反而是骚扰。
     """
     if state.quitting:
         return True  # 走的是托盘里的「退出」，真关
     if not state.tray_ready:
         # 托盘没起来就别拦人，否则窗口关不掉也没地方点退出
+        return True
+    if close_exit_enabled():
+        # 设置里选了「点叉号直接退出」：收好尺寸、托盘一起收干净，放行关窗
+        state.quitting = True
+        _remember_size()
+        stop_tray()
         return True
     win = state.window
     try:
@@ -789,9 +802,6 @@ def on_closing():
             win.hide()
     except Exception:
         return True
-    if state.first_hide:
-        state.first_hide = False
-        notify("还在后台跑", "点托盘图标回到界面，右键菜单里有「退出」。")
     return False
 
 
@@ -878,6 +888,7 @@ class Api(object):
             "autostart": autostart_enabled(),
             "check_update": bool(opts.get("check_update", True)),
             "notify_schedule": bool(opts.get("notify_schedule", True)),
+            "close_exit": bool(opts.get("close_exit", False)),
             "update": state.update,
             "data_dir": data_dir,
         }
@@ -961,6 +972,15 @@ class Api(object):
     def set_notify_schedule(self, enabled):
         opts = load_options()
         opts["notify_schedule"] = bool(enabled)
+        opts["autostart_initialized"] = True
+        save_options(opts)
+        return bool(enabled)
+
+    def set_close_exit(self, enabled):
+        """点叉号：True=直接退出，False=缩进托盘（默认）。随设置面板的
+        「保存」一起落库。"""
+        opts = load_options()
+        opts["close_exit"] = bool(enabled)
         opts["autostart_initialized"] = True
         save_options(opts)
         return bool(enabled)
