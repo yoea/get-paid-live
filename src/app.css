@@ -143,6 +143,7 @@ body{
   /* 日历那栏也要吃掉纵向余量，否则窗口拉高后空白全堆在它下面 */
   .col-b{justify-content:space-between}
   .col-b .card{flex:1;display:flex;flex-direction:column}
+  .col-b .card .cal-body{flex:1;display:flex;flex-direction:column}
   .col-b .card .days{flex:1;grid-auto-rows:minmax(34px,1fr)}
 }
 
@@ -324,14 +325,16 @@ body{
   background:linear-gradient(135deg,#ffe08a,#ff9e5e);color:#241503;font-weight:750;
   border-color:transparent;box-shadow:0 0 0 3px rgba(255,200,87,.16),0 4px 14px rgba(255,158,94,.28);
 }
-/* 日历：状态图例已移除，改在日期下方叠一个大月份数字水印。
-   放在内容之上但透明度极低，既能完整看见数字，又不影响日期可读性。 */
-.card.cal-card{overflow:hidden;padding-bottom:18px}
+/* 日历：状态图例已移除，改成日期格正中央的大月份数字水印。
+   水印单独放在 .cal-body 里（与 .days 平级），才不会被 renderCalendar
+   的 innerHTML 冲掉；居中且够大够浓，但 pointer-events:none 不挡点击。 */
+.card.cal-card{overflow:hidden}
+.cal-body{position:relative;min-height:0}
 .cal-head,.week,.days{position:relative;z-index:1}
 .cal-watermark{
-  position:absolute;right:18px;bottom:2px;z-index:2;
-  font-size:clamp(110px,15vw,170px);font-weight:800;line-height:1;
-  letter-spacing:-.07em;color:var(--text);opacity:.055;
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;
+  font-size:clamp(170px,24vw,260px);font-weight:800;line-height:1;
+  letter-spacing:-.08em;color:var(--text);opacity:.12;
   pointer-events:none;user-select:none;
 }
 
