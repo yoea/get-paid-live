@@ -139,17 +139,17 @@ exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的
 版本号只有一个来源：`version.py` 里的 `VERSION`。改它，exe 文件属性、界面右下角的签名核对、Release 标签、查更新时的比对基准全都跟着走；产物文件名固定为 `GetPaidLive.exe`，不带版本号。
 
 ```bash
-# 1. 改 version.py：VERSION = "1.4.22"
-# 2. 顺手改 src/index.html 里的 <button id="verNum">v1.4.22</button>，然后跑一次 python merge.py
+# 1. 改 version.py：VERSION = "1.4.23"
+# 2. 顺手改 src/index.html 里的 <button id="verNum">v1.4.23</button>，然后跑一次 python merge.py
 # 3. 把 .github/release-notes.md 里上一版的内容移到 docs/CHANGELOG.md，
-#    然后只写这一版的「## v1.4.22」——Release 正文只留当前版本
+#    然后只写这一版的「## v1.4.23」——Release 正文只留当前版本
 # 4. 提交
-git add -A && git commit -m "v1.4.22"
+git add -A && git commit -m "v1.4.23"
 git push
 
 # 5. 打同名标签推上去，剩下的交给 CI
-git tag -a v1.4.22 -m "v1.4.22"
-git push origin v1.4.22
+git tag -a v1.4.23 -m "v1.4.23"
+git push origin v1.4.23
 
 # 6. CI 成功、Release 上线后，本机再打一份 exe（固定收尾，见下面）
 打包exe.bat
@@ -164,13 +164,13 @@ git push origin v1.4.22
 | 检出代码 | `windows-latest` 干净环境 |
 | 安装 Python | 3.12，`cache: pip` 按 `requirements.txt` 缓存依赖 |
 | 装依赖 | pywebview（框架）+ pyinstaller（打包器），只装在构建机上 |
-| 校验版本号 | 标签 `v1.4.22` 必须等于 `version.py` 里的 `VERSION`，不一致直接失败 |
+| 校验版本号 | 标签 `v1.4.23` 必须等于 `version.py` 里的 `VERSION`，不一致直接失败 |
 | 打包 | 跑 `python build.py`，产出单文件 exe |
 | 校验产物 | 文件名必须是 `GetPaidLive.exe`、文件属性里的版本与标签一致、体积大于 5 MB，否则判定打包缺东西 |
 | 存构建产物 | 上传到 Actions 的 Artifacts，保留 7 天 |
 | 发 Release | 用 `gh release` 创建版本并附上 exe，正文整段取自 `.github/release-notes.md`（只有当前版本） |
 
-**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.23、exe 属性里却是 1.4.22」这种发出去才发现的问题。
+**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.24、exe 属性里却是 1.4.23」这种发出去才发现的问题。
 
 Release 正文只写当前这一版：`.github/release-notes.md` 里除注释外只有最新版本的段落，历史版本全部归档在 [docs/CHANGELOG.md](docs/CHANGELOG.md)。发新版时先把旧段落搬进 CHANGELOG，再写新段落。CI 原样使用，不做任何重排。
 
@@ -298,4 +298,4 @@ assets/screenshot.png         README 用的界面截图
 
 ---
 
-作者 **Ethan** · v1.4.22 · MIT
+作者 **Ethan** · v1.4.23 · MIT
