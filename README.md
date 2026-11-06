@@ -122,13 +122,13 @@ Windows 桌面小程序，单个 exe 双击即用，不装 Python、不装运行
 
 ## 下载
 
-到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive-v1.4.22.exe`，双击运行。
+到 [**Releases**](https://github.com/yoea/get-paid-live/releases) 下载 `GetPaidLive.exe`，双击运行。
 
-单文件约 20 MB，不需要安装 Python、浏览器或任何运行库。文件名和右键「属性 → 详细信息」里都带版本号，方便确认拿到的是哪一版。
+单文件约 20 MB，不需要安装 Python、浏览器或任何运行库。文件名固定为 `GetPaidLive.exe`，右键「属性 → 详细信息」里能看到文件版本和产品版本，用它确认拿到的是哪一版。
 
 exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的 Windows 环境里现编译，从源码到产物这条链路可查（见下面的[打包与发布](#打包与发布)）。
 
-> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器-v1.4.22.exe` 会变成 `-v1.4.22.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
+> 文件名是英文的：GitHub Release 的附件名只保留 ASCII 字母数字和 `._-`，中文会被静默删掉（`上班鼓励器.exe` 会变成 `.exe`）。窗口标题和文件属性里仍然是中文的「上班鼓励器」。
 
 ## 打包与发布
 
@@ -136,7 +136,7 @@ exe 不是手工传上去的：每个 Release 都由 GitHub Actions 在干净的
 
 ### 发一个正式版本
 
-版本号只有一个来源：`version.py` 里的 `VERSION`。改它，exe 文件名、文件属性、界面右下角的签名核对、Release 标签、查更新时的比对基准全都跟着走。
+版本号只有一个来源：`version.py` 里的 `VERSION`。改它，exe 文件属性、界面右下角的签名核对、Release 标签、查更新时的比对基准全都跟着走；产物文件名固定为 `GetPaidLive.exe`，不带版本号。
 
 ```bash
 # 1. 改 version.py：VERSION = "1.4.22"
@@ -166,11 +166,11 @@ git push origin v1.4.22
 | 装依赖 | pywebview（框架）+ pyinstaller（打包器），只装在构建机上 |
 | 校验版本号 | 标签 `v1.4.22` 必须等于 `version.py` 里的 `VERSION`，不一致直接失败 |
 | 打包 | 跑 `python build.py`，产出单文件 exe |
-| 校验产物 | 文件名里必须含版本号、体积必须大于 5 MB，否则判定打包缺东西 |
+| 校验产物 | 文件名必须是 `GetPaidLive.exe`、文件属性里的版本与标签一致、体积大于 5 MB，否则判定打包缺东西 |
 | 存构建产物 | 上传到 Actions 的 Artifacts，保留 7 天 |
 | 发 Release | 用 `gh release` 创建版本并附上 exe，正文整段取自 `.github/release-notes.md`（只有当前版本） |
 
-**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.23、exe 里却是 1.4.22」这种发出去才发现的问题。
+**版本号对不上就让 CI 失败**，是这个工作流最有用的一条：避免出现「标签写 1.4.23、exe 属性里却是 1.4.22」这种发出去才发现的问题。
 
 Release 正文只写当前这一版：`.github/release-notes.md` 里除注释外只有最新版本的段落，历史版本全部归档在 [docs/CHANGELOG.md](docs/CHANGELOG.md)。发新版时先把旧段落搬进 CHANGELOG，再写新段落。CI 原样使用，不做任何重排。
 
@@ -186,7 +186,7 @@ Release 正文只写当前这一版：`.github/release-notes.md` 里除注释外
 打包exe.bat
 ```
 
-生成 `dist\GetPaidLive-v1.4.22.exe`。第一次运行会联网装 pywebview / pystray / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
+生成 `dist\GetPaidLive.exe`。第一次运行会联网装 pywebview / pystray / pyinstaller，装在项目内的 `.venv-build`，不动你的全局 Python。
 
 或者手动执行等价的三条：
 
@@ -200,7 +200,7 @@ python -m venv .venv-build
 
 这几个都写在代码注释里，也记一下免得重犯：
 
-- **Release 附件名只能是 ASCII。** 平台会静默删掉文件名里的非 ASCII 字符，任何上传方式（Softprops action、`gh release upload`、网页拖拽）都一样。所以产物名固定为 `GetPaidLive-v{版本}.exe`，中文名只留在窗口标题和文件属性 `ProductName` 里。
+- **Release 附件名只能是 ASCII。** 平台会静默删掉文件名里的非 ASCII 字符，任何上传方式（Softprops action、`gh release upload`、网页拖拽）都一样。所以产物名固定为 `GetPaidLive.exe`（不带版本号，版本看文件属性），中文名只留在窗口标题和文件属性 `ProductName` 里。
 - **Windows runner 的控制台默认是 cp1252。** `build.py` 打印中文会当场 `UnicodeEncodeError`，所以脚本开头强制 `sys.stdout.reconfigure(encoding="utf-8")`，工作流里再补 `PYTHONIOENCODING` / `PYTHONUTF8` 两个环境变量透传给 PyInstaller 子进程。
 - **`setup-python` 的 `cache: pip` 找不到依赖清单会直接失败**，连 Python 都装不上。所以仓库里必须有 `requirements.txt`，并用 `cache-dependency-path` 指向它。
 - **用 `gh release` 而不是 marketplace 的发布 action。** 两者剥中文名的行为一模一样，`gh` 少一层封装，日志更直接、出错时好查。

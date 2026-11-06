@@ -60,8 +60,14 @@ jobs:
           Write-Host ("大小:   " + [math]::Round($exe.Length / 1MB, 1) + " MB")
           Write-Host ("文件版本: " + $info.FileVersion)
           Write-Host ("公司:     " + $info.CompanyName)
-          if (-not $exe.Name.Contains("v" + $info.FileVersion)) {
-            Write-Error "exe 文件名里没有版本号"
+          if ($exe.Name -ne "GetPaidLive.exe") {
+            Write-Error "产物文件名不对：$($exe.Name)"
+            exit 1
+          }
+          # 文件名不再带版本，改校验文件属性里的版本与标签是否一致（手动触发时跳过）
+          $tag = "${{ github.ref_name }}"
+          if ($tag.StartsWith("v") -and (-not $info.FileVersion -or -not $info.FileVersion.StartsWith($tag.TrimStart('v')))) {
+            Write-Error "exe 文件属性里的版本与标签不一致：$($info.FileVersion) / $tag"
             exit 1
           }
           if ([math]::Round($exe.Length / 1MB, 1) -lt 5) {

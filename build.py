@@ -28,11 +28,12 @@ NAME = "上班鼓励器"
 # 中文名保留在窗口标题和 exe 的文件属性里，不影响用户看到的名字。
 EXE_BASE = "GetPaidLive"
 
-# 版本号来自 version.py（唯一来源）：exe 文件名、文件属性、Release 标签都跟着它走。
-# 界面右下角的签名是 HTML 里的静态文字，打包时会核对（见 check_html_version）。
+# 产物名固定，不带版本号：右键「属性 → 详细信息」里已经有文件版本 / 产品版本，
+# 文件名每次发版都换一个反而不好认。版本号仍来自 version.py（唯一来源），
+# 写进文件属性、Release 标签、界面右下角签名（打包时由 check_html_version 核对）。
 AUTHOR = "Ethan"
 
-EXE_NAME = "%s-v%s" % (EXE_BASE, VERSION)
+EXE_NAME = EXE_BASE
 INTERNAL_NAME = "ShangBanGuLiQi"
 
 VERSION_TEMPLATE = """VSVersionInfo(
@@ -155,7 +156,7 @@ def main():
         "--clean",
         "--onefile",
         "--windowed",           # 不弹黑色控制台窗口
-        "--name", EXE_NAME,     # exe 文件名带版本号
+        "--name", EXE_NAME,     # 固定名，版本写在文件属性里
         "--icon", "app.ico",
         "--version-file", version_file,
         # 界面资源随 exe 一起封进去
@@ -168,7 +169,7 @@ def main():
         "--hidden-import", "PIL.Image",
         "desktop.py",
     ]
-    print("正在打包 %s（v%s）……" % (EXE_NAME, VERSION))
+    print("正在打包 %s.exe（v%s）……" % (EXE_NAME, VERSION))
     env = dict(os.environ)
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
