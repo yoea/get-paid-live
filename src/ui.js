@@ -518,7 +518,7 @@
 
   // 兜底：极少数环境（省电模式 / 部分无头浏览器）rAF 不推进，靠定时器保底刷新
   setInterval(function () {
-    if (!running) return;
+    if (!running || sleeping) return;
     if (Date.now() - lastFrame > 250) { lastFrame = Date.now(); frame(nowAt()); }
   }, 120);
 
@@ -562,12 +562,48 @@
   }
 
   document.addEventListener('visibilitychange', function () {
+    if (sleeping) return;
     if (document.hidden) {
       if (raf !== null) { cancelAnimationFrame(raf); raf = null; }
     } else if (raf === null && running) {
       loop();
     }
   });
+
+  /* ---------- 轻量模式 ----------
+     原生窗口 hide() / 最小化不会让 Chromium 置 document.hidden，上面的
+     visibilitychange 根本不触发，场景动画和粒子 rAF 会一直空转吃 GPU。
+     改由桌面层在收托盘 / 最小化时主动调 Guliqi.sleepUI()，显示时调 wakeUI()。
+     页面不卸载：留一个 30 秒心跳只做时段检测（到点提醒）和托盘快照外推，
+     不重绘界面；唤醒时立刻回到原来的帧循环，零加载延迟。 */
+  var sleeping = false, sleptTimer = null;
+  function sleptTick() {
+    if (!sleeping || !running) return;
+    trackPhase(engine.snapshot(nowAt(), cfg.demo));
+    pushStatus();
+  }
+  function sleepUI() {
+    if (sleeping) return;
+    sleeping = true;
+    document.documentElement.classList.add('sleeping');
+    if (raf !== null) { cancelAnimationFrame(raf); raf = null; }
+    if (G.fxSleep) G.fxSleep();          // 停粒子 rAF + 释放 canvas 位图
+    pushStatus();                        // 收起前把最新快照交给 Python 外推
+    if (sleptTimer === null) sleptTimer = setInterval(sleptTick, 30000);
+  }
+  function wakeUI() {
+    if (!sleeping) return;
+    sleeping = false;
+    document.documentElement.classList.remove('sleeping');
+    if (sleptTimer !== null) { clearInterval(sleptTimer); sleptTimer = null; }
+    cache = {}; calKey = '';             // 强制重绘一次，别让画面停在休眠前
+    if (G.fxWake) G.fxWake();
+    if (running && raf === null) loop();
+  }
+  G.sleepUI = sleepUI;
+  G.wakeUI = wakeUI;
+  // 兜底：单实例「让位」等路径是 Win32 直接 ShowWindow，不走 Python 的 show_window()
+  window.addEventListener('focus', wakeUI);
 
   /* ---------- 隐藏金额 ---------- */
   function toggleHide() {
@@ -1694,8 +1730,18 @@
     }
     window.addEventListener('resize', onResize);
     document.addEventListener('visibilitychange', function () {
+      if (sleeping) return;
       if (document.hidden) stop(); else start();
     });
+    // 轻量模式：收托盘 / 最小化时停粒子 rAF 并释放两张画布位图，
+    // 唤醒时按当前视口重新分配位图再开跑。
+    G.fxSleep = function () {
+      stop();
+      [cv, rcv].forEach(function (c) {
+        if (c) { c.width = 1; c.height = 1; }
+      });
+    };
+    G.fxWake = function () { resize(); start(); };
     start();
   })();
 
@@ -1783,8 +1829,8 @@
     pollUpdate();
     syncTitlebar();
   });
-  setInterval(pushStatus, 5000);
-  setInterval(pollUpdate, 8000);
+  setInterval(function () { if (!sleeping) pushStatus(); }, 5000);
+  setInterval(function () { if (!sleeping) pollUpdate(); }, 8000);
   // 兜底：pywebviewready 可能在本脚本执行前就发过了
   setTimeout(function () {
     loadDeskOpts();

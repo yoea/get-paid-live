@@ -692,6 +692,14 @@ html.lock{overflow:hidden}
   *{animation:none!important;transition:none!important}
 }
 
+/* 轻量模式：窗口收进托盘 / 最小化时，桌面层给 <html> 挂 sleeping。
+   停掉所有 CSS 动画与场景层合成，页面仍在（计时和到点提醒靠低频心跳继续跑），
+   唤醒时移除类，动画随下一帧自然恢复。 */
+html.sleeping *,html.sleeping *::before,html.sleeping *::after{
+  animation:none!important;transition:none!important;
+}
+html.sleeping .fx,html.sleeping #bgFx,html.sleeping #rainFx{display:none!important}
+
 /* ---------- 背景粒子 ----------
    画布垫在所有内容之下（z-index:-1 只低于内容、不遮 body 底色），
    translateZ(0) 让浏览器把它作为独立合成层走 GPU；

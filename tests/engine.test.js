@@ -158,6 +158,25 @@ t('保存按钮仍兜底写一次桌面选项', function () {
   assert.ok(uiSrc.indexOf('saveDeskOpts();') >= 0);
 });
 
+console.log('轻量模式');
+var deskSrc = fs.readFileSync(path.join(__dirname, '..', 'desktop.py'), 'utf8');
+var cssSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.css'), 'utf8');
+t('桌面层在收托盘/最小化时休眠、显示时唤醒', function () {
+  assert.ok(deskSrc.indexOf('Guliqi.sleepUI()') >= 0);
+  assert.ok(deskSrc.indexOf('Guliqi.wakeUI()') >= 0);
+  assert.ok(deskSrc.indexOf('window.events.minimized += on_minimized') >= 0);
+  assert.ok(deskSrc.indexOf('window.events.restored += on_restored') >= 0);
+});
+t('CSS 全局停动画并隐藏场景层', function () {
+  assert.ok(cssSrc.indexOf('html.sleeping *') >= 0);
+  assert.ok(cssSrc.indexOf('html.sleeping .fx') >= 0);
+});
+t('页面休眠保留通知心跳、唤醒重启帧循环', function () {
+  assert.ok(uiSrc.indexOf('trackPhase(engine.snapshot(nowAt(), cfg.demo))') >= 0);
+  assert.ok(uiSrc.indexOf('if (running && raf === null) loop()') >= 0);
+  assert.ok(uiSrc.indexOf('G.fxSleep = function') >= 0);
+});
+
 console.log('');
 console.log(fail === 0 ? ('全部通过：' + pass + ' 项') : ('失败 ' + fail + ' 项 / 共 ' + (pass + fail) + ' 项'));
 process.exit(fail === 0 ? 0 : 1);

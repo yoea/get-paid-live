@@ -721,6 +721,33 @@ def _tray_image():
 
 # ---------------------------------------------------------------- 窗口动作
 
+def sleep_window():
+    """轻量模式：窗口不可见之前先让页面停掉渲染层。
+
+    原生 hide() / 最小化不会让 WebView2 把页面标成 hidden，光靠 JS 的
+    visibilitychange 停不掉 CSS 动画和粒子 rAF。这里主动调页面里的休眠入口，
+    只留 30 秒心跳管到点提醒和托盘快照外推，不重绘界面。
+    """
+    win = state.window
+    if win is None:
+        return
+    try:
+        win.run_js("Guliqi.sleepUI()")
+    except Exception:
+        pass
+
+
+def wake_window():
+    """窗口重新显示：恢复帧循环、粒子和场景动画，零加载延迟。"""
+    win = state.window
+    if win is None:
+        return
+    try:
+        win.run_js("Guliqi.wakeUI()")
+    except Exception:
+        pass
+
+
 def show_window():
     win = state.window
     if win is None:
@@ -728,7 +755,8 @@ def show_window():
     try:
         win.show()
     except Exception:
-        pass
+        return
+    wake_window()
 
 
 def quit_app():
@@ -832,10 +860,21 @@ def on_closing():
     try:
         if win is not None:
             _remember_size()      # 收进托盘前把尺寸记下，下次打开还是这么大
+            sleep_window()        # 先停渲染层，再隐藏原生窗口
             win.hide()
     except Exception:
         return True
     return False
+
+
+def on_minimized():
+    """系统最小化按钮：同样进轻量模式。"""
+    sleep_window()
+
+
+def on_restored():
+    """从任务栏还原：把界面和动画接回来。"""
+    wake_window()
 
 
 # ---------------------------------------------------------------- 检查更新
@@ -1105,6 +1144,7 @@ class Api(object):
         win = state.window
         if win is None:
             return False
+        sleep_window()
         try:
             win.hide()
             return True
@@ -1227,6 +1267,8 @@ def main():
         window.events.closing += on_closing
         try:
             window.events.resized += on_resized   # 拖一下边框就记下来（debounce 0.8s）
+            window.events.minimized += on_minimized
+            window.events.restored += on_restored
         except Exception:
             pass
 
