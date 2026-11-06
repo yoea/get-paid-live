@@ -509,6 +509,7 @@ class _State(object):
         self.notices = {}         # 到点提醒的去重表：{(kind, 日期): True}
         self.win_saved = False    # 本次启动用的是上次记住的尺寸（是就不再自动收窗口）
         self.fullscreen = False   # 全屏期间别把整块屏幕的尺寸记成"用户拖过的窗口"
+        self.js_seq = 0           # 页面 JS 投递序号，丢弃过期的休眠/唤醒动作
         self.fit_size = None      # 程序自己 fit 出来的尺寸，用来区分"用户拖的"
         self.fit_until = 0.0      # 程序调 resize 后的忽略期，期间的 resized 事件不算数
         self.size_timer = None    # 尺寸落盘的 debounce 定时器
@@ -723,6 +724,34 @@ def _tray_image():
 
 # ---------------------------------------------------------------- 窗口动作
 
+def _post_page_js(script, delay=0.12):
+    """把页面 JS 丢到后台线程执行，绝不在 UI 事件回调里直接调。
+
+    winforms 后端的 evaluate_js 会 Invoke 到 UI 线程，然后 semaphore.acquire()
+    等 WebView2 回调；而回调又被排到同一个 UI 线程的同步上下文。closing /
+    minimized / restored 回调本身就跑在 UI 线程，直接调 run_js 会把自己锁死
+    —— v1.4.23 点叉号未响应就是这么来的。run_js 虽然不等返回值，底层照样
+    等那个信号量，所以只能挪到后台线程，让 UI 线程继续泵消息。
+    """
+    state.js_seq += 1
+    seq = state.js_seq
+
+    def run():
+        if seq != state.js_seq:   # 期间又有了更新的动作，这次作废，别把状态切反
+            return
+        win = state.window
+        if win is None:
+            return
+        try:
+            win.run_js(script)
+        except Exception:
+            pass
+
+    t = threading.Timer(delay, run)
+    t.daemon = True
+    t.start()
+
+
 def sleep_window():
     """轻量模式：窗口不可见之前先让页面停掉渲染层。
 
@@ -730,24 +759,12 @@ def sleep_window():
     visibilitychange 停不掉 CSS 动画和粒子 rAF。这里主动调页面里的休眠入口，
     只留 30 秒心跳管到点提醒和托盘快照外推，不重绘界面。
     """
-    win = state.window
-    if win is None:
-        return
-    try:
-        win.run_js("Guliqi.sleepUI()")
-    except Exception:
-        pass
+    _post_page_js("Guliqi.sleepUI()")
 
 
 def wake_window():
     """窗口重新显示：恢复帧循环、粒子和场景动画，零加载延迟。"""
-    win = state.window
-    if win is None:
-        return
-    try:
-        win.run_js("Guliqi.wakeUI()")
-    except Exception:
-        pass
+    _post_page_js("Guliqi.wakeUI()", 0.02)
 
 
 def show_window():

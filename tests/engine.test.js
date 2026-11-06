@@ -176,6 +176,19 @@ t('页面休眠保留通知心跳、唤醒重启帧循环', function () {
   assert.ok(uiSrc.indexOf('if (running && raf === null) loop()') >= 0);
   assert.ok(uiSrc.indexOf('G.fxSleep = function') >= 0);
 });
+t('closing 回调里不直接执行 JS（防 UI 线程死锁）', function () {
+  var body = deskSrc.slice(deskSrc.indexOf('def on_closing():'));
+  var next = body.indexOf('\ndef ', 1);
+  if (next > 0) body = body.slice(0, next);
+  assert.ok(body.indexOf('run_js(') === -1, 'closing 里不能有 run_js');
+  assert.ok(body.indexOf('evaluate_js(') === -1, 'closing 里不能有 evaluate_js');
+  assert.ok(body.indexOf('sleep_window()') >= 0);
+});
+t('页面 JS 统一由后台线程投递且丢弃过期动作', function () {
+  assert.ok(deskSrc.indexOf('threading.Timer(delay, run)') >= 0);
+  assert.ok(deskSrc.indexOf('_post_page_js("Guliqi.sleepUI()")') >= 0);
+  assert.ok(deskSrc.indexOf('if seq != state.js_seq') >= 0);
+});
 
 console.log('全屏');
 var headSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
