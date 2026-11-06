@@ -907,6 +907,37 @@
     paintThemeSeg();
     paintThemeStory();
   });
+  /* ---------- 全屏 ----------
+     F11 或顶栏按钮走桌面层的原生窗口全屏；WebView2 的浏览器快捷键已被
+     pywebview 关掉（debug=False），F11 能完整交到页面手里。
+     纯浏览器直开时降级到 Fullscreen API，方便开发预览。
+     全屏期间桌面层不记窗口尺寸，否则下次启动会被记成一整块屏幕。 */
+  var isFull = false;
+  function paintFullscreenBtn(full) {
+    isFull = !!full;
+    document.documentElement.classList.toggle('fullscreen', isFull);
+    var b = $('btnFullscreen');
+    if (!b) return;
+    var tip = isFull ? '退出全屏 (F11)' : '进入全屏 (F11)';
+    b.setAttribute('title', tip);
+    b.setAttribute('aria-label', tip);
+  }
+  function toggleFullscreen() {
+    if (desk.ready()) {
+      var p = desk.call('toggle_fullscreen');
+      if (p && typeof p.then === 'function') p.then(paintFullscreenBtn, function () {});
+      return;
+    }
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    } catch (e) {}
+  }
+  $('btnFullscreen').addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', function () {
+    if (!desk.ready()) paintFullscreenBtn(!!document.fullscreenElement);
+  });
+
   $('mask').addEventListener('click', closeSheet);
   $('btnCancel').addEventListener('click', closeSheet);
 
@@ -1746,10 +1777,11 @@
   })();
 
   /* ---------- 快捷键 ----------
-     只保留 Esc 关面板。C/H 之类的单键快捷键已移除：
+     F11 切全屏，Esc 关面板。C/H 之类的单键快捷键已移除：
      选中文字想 Ctrl+C 时会误触发，得不偿失。 */
   document.addEventListener('keydown', function (e) {
     var t = e.target;
+    if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
       if (e.key === 'Escape') { closeUpdateModal(); closeSheet(); }
       return;

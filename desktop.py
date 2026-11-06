@@ -508,6 +508,7 @@ class _State(object):
         self.update = None        # 查到的版本信息，供界面轮询取走
         self.notices = {}         # 到点提醒的去重表：{(kind, 日期): True}
         self.win_saved = False    # 本次启动用的是上次记住的尺寸（是就不再自动收窗口）
+        self.fullscreen = False   # 全屏期间别把整块屏幕的尺寸记成"用户拖过的窗口"
         self.fit_size = None      # 程序自己 fit 出来的尺寸，用来区分"用户拖的"
         self.fit_until = 0.0      # 程序调 resize 后的忽略期，期间的 resized 事件不算数
         self.size_timer = None    # 尺寸落盘的 debounce 定时器
@@ -536,7 +537,7 @@ def _remember_size():
     每次启动都会被记成一次"用户尺寸"，之后就永远不再自动适配内容高度了。
     """
     win = state.window
-    if win is None:
+    if win is None or state.fullscreen:
         return False
     try:
         w, h = int(win.width), int(win.height)
@@ -561,8 +562,9 @@ def _remember_size_soon():
 
 
 def on_resized(*_args):
-    # 程序自己 resize（fit_window）引起的 WM_SIZE 不算用户行为
-    if time.time() < state.fit_until:
+    # 程序自己 resize（fit_window）引起的 WM_SIZE 不算用户行为；
+    # 全屏切换也会连发一串尺寸事件，一律别记
+    if state.fullscreen or time.time() < state.fit_until:
         return
     _remember_size_soon()
 
@@ -1139,6 +1141,20 @@ class Api(object):
         if not isinstance(payload, dict):
             return False
         return set_titlebar_color(payload.get("color"), bool(payload.get("dark")))
+
+    def toggle_fullscreen(self):
+        """F11 / 顶栏按钮：切换原生窗口全屏，返回切换后的状态供界面换图标。"""
+        win = state.window
+        if win is None:
+            return False
+        try:
+            # 先立标志：切换过程中连发的 resized 事件不能记成"用户拖过窗口"
+            state.fullscreen = not state.fullscreen
+            win.toggle_fullscreen()
+            return state.fullscreen
+        except Exception:
+            state.fullscreen = not state.fullscreen   # 没切成就回滚
+            return state.fullscreen
 
     def hide_window(self):
         win = state.window

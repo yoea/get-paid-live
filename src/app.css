@@ -132,6 +132,10 @@ body{
 #btnTheme .i-sun{display:none}
 :root[data-theme=dark] #btnTheme .i-moon{display:none}
 :root[data-theme=dark] #btnTheme .i-sun{display:block}
+/* 全屏按钮：未全屏显示向外四角，全屏后显示向内四角 */
+#btnFullscreen .i-compress{display:none}
+html.fullscreen #btnFullscreen .i-expand{display:none}
+html.fullscreen #btnFullscreen .i-compress{display:block}
 
 /* ---------- 栅格 ---------- */
 .grid{display:grid;gap:13px;grid-template-columns:1fr;flex:1;align-content:start}

@@ -144,6 +144,10 @@ body{
 #btnTheme .i-sun{display:none}
 :root[data-theme=dark] #btnTheme .i-moon{display:none}
 :root[data-theme=dark] #btnTheme .i-sun{display:block}
+/* 全屏按钮：未全屏显示向外四角，全屏后显示向内四角 */
+#btnFullscreen .i-compress{display:none}
+html.fullscreen #btnFullscreen .i-expand{display:none}
+html.fullscreen #btnFullscreen .i-compress{display:block}
 
 /* ---------- 栅格 ---------- */
 .grid{display:grid;gap:13px;grid-template-columns:1fr;flex:1;align-content:start}
@@ -1411,6 +1415,14 @@ html.bigscreen .day i{font-size:10px}
         <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="4"></circle>
           <path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"></path>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btnFullscreen" type="button" aria-label="进入全屏 (F11)" title="进入全屏 (F11)">
+        <svg class="i-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"></path>
+        </svg>
+        <svg class="i-compress" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5"></path>
         </svg>
       </button>
       <button class="icon-btn" id="btnCfg" aria-label="设置">
@@ -3509,6 +3521,37 @@ var Lunar = (function () {
     paintThemeSeg();
     paintThemeStory();
   });
+  /* ---------- 全屏 ----------
+     F11 或顶栏按钮走桌面层的原生窗口全屏；WebView2 的浏览器快捷键已被
+     pywebview 关掉（debug=False），F11 能完整交到页面手里。
+     纯浏览器直开时降级到 Fullscreen API，方便开发预览。
+     全屏期间桌面层不记窗口尺寸，否则下次启动会被记成一整块屏幕。 */
+  var isFull = false;
+  function paintFullscreenBtn(full) {
+    isFull = !!full;
+    document.documentElement.classList.toggle('fullscreen', isFull);
+    var b = $('btnFullscreen');
+    if (!b) return;
+    var tip = isFull ? '退出全屏 (F11)' : '进入全屏 (F11)';
+    b.setAttribute('title', tip);
+    b.setAttribute('aria-label', tip);
+  }
+  function toggleFullscreen() {
+    if (desk.ready()) {
+      var p = desk.call('toggle_fullscreen');
+      if (p && typeof p.then === 'function') p.then(paintFullscreenBtn, function () {});
+      return;
+    }
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    } catch (e) {}
+  }
+  $('btnFullscreen').addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', function () {
+    if (!desk.ready()) paintFullscreenBtn(!!document.fullscreenElement);
+  });
+
   $('mask').addEventListener('click', closeSheet);
   $('btnCancel').addEventListener('click', closeSheet);
 
@@ -4348,10 +4391,11 @@ var Lunar = (function () {
   })();
 
   /* ---------- 快捷键 ----------
-     只保留 Esc 关面板。C/H 之类的单键快捷键已移除：
+     F11 切全屏，Esc 关面板。C/H 之类的单键快捷键已移除：
      选中文字想 Ctrl+C 时会误触发，得不偿失。 */
   document.addEventListener('keydown', function (e) {
     var t = e.target;
+    if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
       if (e.key === 'Escape') { closeUpdateModal(); closeSheet(); }
       return;

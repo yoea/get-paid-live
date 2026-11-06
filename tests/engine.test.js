@@ -177,6 +177,21 @@ t('页面休眠保留通知心跳、唤醒重启帧循环', function () {
   assert.ok(uiSrc.indexOf('G.fxSleep = function') >= 0);
 });
 
+console.log('全屏');
+var headSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
+t('顶栏有全屏按钮，两套图标按状态切换', function () {
+  assert.ok(headSrc.indexOf('id="btnFullscreen"') >= 0);
+  assert.ok(cssSrc.indexOf('html.fullscreen #btnFullscreen .i-compress') >= 0);
+});
+t('F11 与按钮都调桌面层全屏', function () {
+  assert.ok(uiSrc.indexOf("e.key === 'F11'") >= 0);
+  assert.ok(uiSrc.indexOf("desk.call('toggle_fullscreen')") >= 0);
+});
+t('全屏期间不把整块屏幕记成窗口尺寸', function () {
+  assert.ok(deskSrc.indexOf('if win is None or state.fullscreen') >= 0);
+  assert.ok(deskSrc.indexOf('if state.fullscreen or time.time() < state.fit_until') >= 0);
+});
+
 console.log('');
 console.log(fail === 0 ? ('全部通过：' + pass + ' 项') : ('失败 ' + fail + ' 项 / 共 ' + (pass + fail) + ' 项'));
 process.exit(fail === 0 ? 0 : 1);
