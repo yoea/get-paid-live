@@ -3429,6 +3429,7 @@ var Lunar = (function () {
     $('fDemoTime').value = (cfg.demo && cfg.demo_offset) ? hhmmOf(minOfDate(nowAt())) : '';
     renderDemoChips();
     syncDemoUI(false);
+    deskTouched = {};
     loadDeskOpts();          // 桌面版：刷新开机启动 / 检查更新的真实状态
     switchTab('work');       // 每次打开都从第一页开始，别停在上次那一页
     sheet.classList.add('open');
@@ -3469,7 +3470,21 @@ var Lunar = (function () {
 
   // 演示时间：勾上才展开；点快捷时段只填值，点保存才生效（跟其他项一致）
   $('fDemo').addEventListener('change', function () { syncDemoUI(true); });
-  $('fCloseExit').addEventListener('change', paintCloseHint);   // 勾选时立刻预览提示语
+  /* 桌面选项改一下就落库，不等「保存」按钮：它们原本跟整张表单共用一个保存，
+     只要表单校验没过、或者用户直接关面板，这四个开关就全丢。
+     纯浏览器直开没有桥，deskChanged 会静默跳过，不影响预览。 */
+  function deskChanged(key, value) {
+    if (!desk.ready()) return;
+    deskTouched[key] = true;
+    desk.send('set_' + key, value);
+  }
+  $('fAutostart').addEventListener('change', function () { deskChanged('autostart', this.checked); });
+  $('fCheckUpdate').addEventListener('change', function () { deskChanged('check_update', this.checked); });
+  $('fNotify').addEventListener('change', function () { deskChanged('notify_schedule', this.checked); });
+  $('fCloseExit').addEventListener('change', function () {
+    deskChanged('close_exit', this.checked);
+    paintCloseHint();
+  });
   $('fDemoTime').addEventListener('input', paintChips);
   $('btnDemoClear').addEventListener('click', function () {
     $('fDemoTime').value = '';
@@ -3676,6 +3691,8 @@ var Lunar = (function () {
   })();
 
   var deskOpts = null;
+  // 本次打开面板里用户动过的桌面选项；异步回填不能把它们改回旧值
+  var deskTouched = {}, deskReq = 0;
 
   // 托盘用的快照。Python 侧会按这份数据继续外推已赚和剩余时间，
   // 因为窗口藏起来以后系统会节流页面里的定时器。
@@ -3960,19 +3977,21 @@ var Lunar = (function () {
     if (!opts) return;
     deskOpts = opts;
     $('deskBox').style.display = '';
-    $('fAutostart').checked = !!opts.autostart;
-    $('fCheckUpdate').checked = !!opts.check_update;
-    $('fNotify').checked = opts.notify_schedule !== false;
-    $('fCloseExit').checked = !!opts.close_exit;
+    // 用户刚动过的那一项别覆盖：get_settings 是异步的，可能比勾选晚回来
+    if (!deskTouched.autostart) $('fAutostart').checked = !!opts.autostart;
+    if (!deskTouched.check_update) $('fCheckUpdate').checked = !!opts.check_update;
+    if (!deskTouched.notify_schedule) $('fNotify').checked = opts.notify_schedule !== false;
+    if (!deskTouched.close_exit) $('fCloseExit').checked = !!opts.close_exit;
     paintCloseHint();
     paintAbout(opts);
     if (opts.update) offerUpdate(opts.update, false);
   }
 
   function loadDeskOpts() {
+    var seq = ++deskReq;      // 关掉面板又立刻打开时，别让上一次的旧响应盖回来
     var p = desk.call('get_settings');
     if (!p || typeof p.then !== 'function') return;
-    p.then(applyDeskOpts, function () {});
+    p.then(function (opts) { if (seq === deskReq) applyDeskOpts(opts); }, function () {});
   }
 
   function saveDeskOpts() {

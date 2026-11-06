@@ -141,6 +141,23 @@ t('normalize 把越界的发薪日拉回默认', function () {
   assert.strictEqual(G.normalize({ pay_day: '' }).pay_day, 0);
 });
 
+console.log('桌面选项');
+var fs = require('fs');
+var uiSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui.js'), 'utf8');
+t('四个桌面开关都在 change 时即时落库', function () {
+  ['autostart', 'check_update', 'notify_schedule', 'close_exit'].forEach(function (k) {
+    assert.ok(uiSrc.indexOf("deskChanged('" + k + "'") >= 0, k + ' 没有即时保存');
+  });
+});
+t('异步回填不覆盖用户刚改过的选项，且旧响应被丢弃', function () {
+  assert.ok(uiSrc.indexOf('deskTouched[key] = true') >= 0, '未标记改动项');
+  assert.ok(uiSrc.indexOf('if (seq === deskReq)') >= 0, '未防陈旧响应');
+  assert.ok(uiSrc.indexOf('if (!deskTouched.close_exit)') >= 0, '回填未跳过改动项');
+});
+t('保存按钮仍兜底写一次桌面选项', function () {
+  assert.ok(uiSrc.indexOf('saveDeskOpts();') >= 0);
+});
+
 console.log('');
 console.log(fail === 0 ? ('全部通过：' + pass + ' 项') : ('失败 ' + fail + ' 项 / 共 ' + (pass + fail) + ' 项'));
 process.exit(fail === 0 ? 0 : 1);
